@@ -3,7 +3,7 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export const registerUser = async (username: string, email: string, password: string) => {
-  const response = await fetch(`${API_URL}/register`, {
+  const response = await fetch(`${API_URL}/api/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, email, password }),
@@ -17,7 +17,7 @@ export const registerUser = async (username: string, email: string, password: st
 };
 
 export const loginUser = async (email: string, password: string) => {
-  const response = await fetch(`${API_URL}/login`, {
+  const response = await fetch(`${API_URL}/api/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
@@ -31,7 +31,7 @@ export const loginUser = async (email: string, password: string) => {
 };
 
 export const getRoom = async (token: string) => {
-  const response = await fetch(`${API_URL}/room`, {
+  const response = await fetch(`${API_URL}/api/room`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
