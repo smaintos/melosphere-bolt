@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, ListMusic, History, Users, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import useAuth from "@/app/hooks/useAuth"; // Importer le hook d'authentification
+import { getUserProfile } from "@/lib/api"; // Importer la fonction pour obtenir le profil utilisateur
 
 type StatusType = "Actif" | "Ne pas déranger" | "Inactif" | "Absent";
 
@@ -36,7 +37,22 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [status, setStatus] = useState<StatusType>("Actif");
   const [menuOpen, setMenuOpen] = useState(false);
-  const { logout } = useAuth(); // Obtenir la méthode logout depuis le contexte
+  const { user, logout } = useAuth(); // Obtenir la méthode logout depuis le contexte
+  const [profile, setProfile] = useState<any>(null);
+
+  useEffect(() => {
+    if (user) {
+      const fetchProfile = async () => {
+        try {
+          const data = await getUserProfile(localStorage.getItem('token') || '');
+          setProfile(data);
+        } catch (err: any) {
+          console.error(err);
+        }
+      };
+      fetchProfile();
+    }
+  }, [user]);
 
   const statusColors: Record<StatusType, string> = {
     Actif: "bg-green-500",
@@ -52,7 +68,7 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="relative flex flex-col bg-zinc-900 border-r border-zinc-800 w-16 h-screen">
+    <div className="relative flex flex-col bg-zinc-900 border-r border-zinc-800 w-20 h-screen">
       {/* Logo */}
       <div className="p-4 flex items-center justify-center">
         <span className="text-violet-500 font-bold">M</span>
@@ -86,13 +102,15 @@ export default function Sidebar() {
 
       {/* Photo de profil, état de connexion et déconnexion */}
       <div className="p-4 flex flex-col items-center relative">
-        <div className="relative">
+        <div className="relative group">
           {/* Avatar */}
-          <img
-            src="https://via.placeholder.com/40"
-            alt="Profile"
-            className="w-10 h-10 rounded-full"
-          />
+          <Link href="/profile">
+            <img
+              src={profile?.profilePicture ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${profile.profilePicture}` : 'https://via.placeholder.com/40'}
+              alt="Profile"
+              className="w-14 h-13 rounded-full border-2 border-transparent group-hover:border-violet-500 transition-all duration-300"
+            />
+          </Link>
           {/* Indicateur de statut */}
           <span
             className={cn(
