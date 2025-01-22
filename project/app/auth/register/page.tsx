@@ -25,7 +25,7 @@ export default function RegisterPage() {
     try {
       const data = await registerUser(username, email, password);
       login(data.token);
-      router.push('/room');
+      router.push('/');
     } catch (err: any) {
       setError(err.message);
     }
