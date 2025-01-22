@@ -10,22 +10,30 @@ interface EditPlaylistModalProps {
     name: string;
     description: string;
     links: { url: string }[];
+    isPublic: boolean;
   };
   onClose: () => void;
-  onUpdate: (playlistId: number, data: { name: string; description: string; links: string[] }) => void;
+  onUpdate: (playlistId: number, data: { 
+    name: string; 
+    description: string; 
+    links: string[];
+    isPublic: boolean;
+  }) => void;
 }
 
 export function EditPlaylistModal({ playlist, onClose, onUpdate }: EditPlaylistModalProps) {
   const [name, setName] = useState(playlist.name);
   const [description, setDescription] = useState(playlist.description);
   const [links, setLinks] = useState(playlist.links.map(link => link.url));
+  const [isPublic, setIsPublic] = useState(playlist.isPublic);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onUpdate(playlist.id, {
       name,
       description,
-      links: links.filter(link => link.trim() !== '')
+      links: links.filter(link => link.trim() !== ''),
+      isPublic
     });
   };
 
@@ -61,6 +69,17 @@ export function EditPlaylistModal({ playlist, onClose, onUpdate }: EditPlaylistM
             onChange={(e) => setDescription(e.target.value)}
             className="bg-zinc-800/50"
           />
+                <div className="flex items-center space-x-2">
+        <label className="text-sm text-zinc-400">Visibilité:</label>
+        <select
+          value={isPublic ? "public" : "private"}
+          onChange={(e) => setIsPublic(e.target.value === "public")}
+          className="bg-zinc-800/50 border-violet-500/20 rounded-md p-2 text-sm"
+        >
+          <option value="private">Privée</option>
+          <option value="public">Publique</option>
+        </select>
+      </div>
           {links.map((link, index) => (
             <Input
               key={index}

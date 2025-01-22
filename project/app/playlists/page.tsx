@@ -29,6 +29,7 @@ export default function PlaylistsPage() {
     name: '',
     description: '',
     links: [''],
+    isPublic: false
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,25 +65,21 @@ export default function PlaylistsPage() {
     setError(null);
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Token manquant. Veuillez vous reconnecter.');
-      }
+      if (!token) throw new Error('Token manquant');
 
       const validLinks = newPlaylist.links.filter(link => link.trim() !== '');
-      
-      if (validLinks.length === 0) {
-        throw new Error('Ajoutez au moins un lien valide');
-      }
+      if (validLinks.length === 0) throw new Error('Ajoutez au moins un lien valide');
 
       const playlist = await createPlaylist(
         token,
         newPlaylist.name,
         newPlaylist.description,
-        validLinks
+        validLinks,
+        newPlaylist.isPublic // Ajout de isPublic
       );
 
       setPlaylists(prevPlaylists => [...prevPlaylists, playlist]);
-      setNewPlaylist({ name: '', description: '', links: [''] });
+      setNewPlaylist({ name: '', description: '', links: [''], isPublic: false });
     } catch (err: any) {
       setError(err.message);
     }
@@ -146,18 +143,32 @@ export default function PlaylistsPage() {
             <Card className="p-6 bg-zinc-900/50 border-violet-500/20 sticky top-8">
               <h2 className="text-xl font-semibold mb-4">Créer une playlist</h2>
               <div className="space-y-4">
-                <Input
-                  placeholder="Nom de la playlist"
-                  value={newPlaylist.name}
-                  onChange={(e) => setNewPlaylist({ ...newPlaylist, name: e.target.value })}
-                  className="bg-zinc-800/50"
-                />
-                <Textarea
-                  placeholder="Description"
-                  value={newPlaylist.description}
-                  onChange={(e) => setNewPlaylist({ ...newPlaylist, description: e.target.value })}
-                  className="bg-zinc-800/50"
-                />
+      <Input
+        placeholder="Nom de la playlist"
+        value={newPlaylist.name}
+        onChange={(e) => setNewPlaylist({ ...newPlaylist, name: e.target.value })}
+        className="bg-zinc-800/50"
+      />
+      <Textarea
+        placeholder="Description"
+        value={newPlaylist.description}
+        onChange={(e) => setNewPlaylist({ ...newPlaylist, description: e.target.value })}
+        className="bg-zinc-800/50"
+      />
+      <div className="flex items-center space-x-2">
+        <label className="text-sm text-zinc-400">Visibilité:</label>
+        <select
+          value={newPlaylist.isPublic ? "public" : "private"}
+          onChange={(e) => setNewPlaylist({ 
+            ...newPlaylist, 
+            isPublic: e.target.value === "public" 
+          })}
+          className="bg-zinc-800/50 border-violet-500/20 rounded-md p-2 text-sm"
+        >
+          <option value="private">Privée</option>
+          <option value="public">Publique</option>
+        </select>
+      </div>
                 {newPlaylist.links.map((link, index) => (
                   <Input
                     key={index}

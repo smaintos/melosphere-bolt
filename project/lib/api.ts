@@ -30,14 +30,14 @@ export const loginUser = async (email: string, password: string) => {
   return data;
 };
 
-export const createPlaylist = async (token: string, name: string, description: string, links: string[]) => {
+export const createPlaylist = async (token: string, name: string, description: string, links: string[], isPublic: boolean) => {
   const response = await fetch(`${API_URL}/playlists`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
     },
-    body: JSON.stringify({ name, description, links }),
+    body: JSON.stringify({ name, description, links, isPublic }),
   });
 
   const data = await response.json();
@@ -76,7 +76,12 @@ export const deletePlaylist = async (token: string, playlistId: number) => {
   return data;
 };
 
-export const updatePlaylist = async (token: string, playlistId: number, data: { name: string, description: string, links: string[] }) => {
+export const updatePlaylist = async (token: string, playlistId: number, data: { 
+  name: string, 
+  description: string, 
+  links: string[],
+  isPublic: boolean 
+}) => {
   const response = await fetch(`${API_URL}/updateplaylists/${playlistId}`, {
     method: 'PUT',
     headers: {
@@ -267,4 +272,54 @@ export const downloadMp3 = async (videoUrl: string, token: string) => {
   }
 
   return response;
+};
+
+export const handleDownloadAndSend = async (videoUrl: string, token: string) => {
+  try {
+    const downloadResponse = await fetch(`${API_URL}/download`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ videoUrl }),
+    });
+
+    if (!downloadResponse.ok) {
+      const errorData = await downloadResponse.json();
+      throw new Error(errorData.message || 'Erreur lors du téléchargement');
+    }
+
+    const data = await downloadResponse.json();
+    
+    // Une fois que le fichier est prêt, on le récupère
+    const fileResponse = await fetch(`${API_URL}/send-file/${data.fileName}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!fileResponse.ok) {
+      throw new Error('Erreur lors de la récupération du fichier');
+    }
+
+    const blob = await fileResponse.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = data.fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+
+    return {
+      ...data,
+      viewCount: data.viewCount || 0,
+      likeCount: data.likeCount || 0
+    };
+  } catch (error) {
+    console.error('Erreur:', error);
+    throw error;
+  }
 };
