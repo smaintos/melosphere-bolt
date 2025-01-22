@@ -30,6 +30,105 @@ export const loginUser = async (email: string, password: string) => {
   return data;
 };
 
+export const createPlaylist = async (token: string, name: string, description: string, links: string[]) => {
+  const response = await fetch(`${API_URL}/playlists`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ name, description, links }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Erreur lors de la création de la playlist');
+  }
+  return data;
+};
+
+export const getPlaylists = async (token: string) => {
+  const response = await fetch(`${API_URL}/getplaylists`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Erreur lors de la récupération des playlists');
+  }
+  return data;
+};
+export const deletePlaylist = async (token: string, playlistId: number) => {
+  const response = await fetch(`${API_URL}/playlists/${playlistId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Erreur lors de la suppression de la playlist');
+  }
+  return data;
+};
+
+export const updatePlaylist = async (token: string, playlistId: number, data: { name: string, description: string, links: string[] }) => {
+  const response = await fetch(`${API_URL}/updateplaylists/${playlistId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  const responseData = await response.json();
+  if (!response.ok) {
+    throw new Error(responseData.message || 'Erreur lors de la modification de la playlist');
+  }
+  return responseData;
+};
+
+export const downloadPlaylist = async (token: string, playlistId: number) => {
+  try {
+    const response = await fetch(`${API_URL}/download-playlist`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ playlistId }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Erreur lors du téléchargement de la playlist');
+    }
+
+    // Récupérer le nom du fichier depuis les headers
+    const contentDisposition = response.headers.get('content-disposition');
+    const filenameMatch = contentDisposition && contentDisposition.match(/filename="(.+)"/);
+    const filename = filenameMatch ? filenameMatch[1] : 'playlist.zip';
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error: any) {
+    console.error('[Download-Playlist] Erreur:', error);
+    throw error;
+  }
+};
+
 export const uploadProfilePicture = async (token: string, file: File) => {
   const formData = new FormData();
   formData.append('file', file);
@@ -48,6 +147,20 @@ export const uploadProfilePicture = async (token: string, file: File) => {
     throw new Error(data.message || 'Erreur lors du téléchargement de la photo de profil.');
   }
 
+  return data;
+};
+
+export const getHistory = async (token: string) => {
+  const response = await fetch(`${API_URL}/history`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Erreur lors de la récupération de l\'historique');
+  }
   return data;
 };
 
