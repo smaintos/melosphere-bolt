@@ -2,6 +2,17 @@
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+interface SearchPlaylist {
+  id: number;
+  name: string;
+  description: string;
+  isPublic: boolean;
+  links: { url: string }[];
+  user: {
+    username: string;
+  };
+}
+
 export const registerUser = async (username: string, email: string, password: string) => {
   const response = await fetch(`${API_URL}/register`, {
     method: 'POST',
@@ -47,6 +58,7 @@ export const createPlaylist = async (token: string, name: string, description: s
   return data;
 };
 
+
 export const getPlaylists = async (token: string) => {
   const response = await fetch(`${API_URL}/getplaylists`, {
     method: 'GET',
@@ -73,6 +85,29 @@ export const deletePlaylist = async (token: string, playlistId: number) => {
   if (!response.ok) {
     throw new Error(data.message || 'Erreur lors de la suppression de la playlist');
   }
+  return data;
+};
+
+export const searchPlaylists = async (token: string, query: string): Promise<SearchPlaylist[]> => {
+  // Log pour déboguer
+  console.log("Calling API with query:", query);
+  
+  const response = await fetch(`${API_URL}/search/playlists?query=${encodeURIComponent(query)}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  // Log pour déboguer
+  console.log("API Response:", response);
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Erreur lors de la recherche des playlists');
+  }
+
   return data;
 };
 

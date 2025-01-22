@@ -124,7 +124,9 @@ export default function AddPlaylist({ showCheckboxes = false, videoUrl, onPlayli
   }
 
   return (
+    
     <div className="bg-zinc-900/90 h-[600px] sm:h-[850px] md:h-[780px] rounded-xl p-8 backdrop-blur-sm border border-violet-500/20">
+    <h1 className="text-2xl  text-white mb-6">Playlists</h1>
       {!hasPlaylists ? (
         <div className="flex flex-col items-center justify-center h-full space-y-6">
           <h2 className="text-2xl text-zinc-400/60 text-lg text-center">
