@@ -76,12 +76,17 @@ export const deletePlaylist = async (token: string, playlistId: number) => {
   return data;
 };
 
-export const updatePlaylist = async (token: string, playlistId: number, data: { 
-  name: string, 
-  description: string, 
+export const updatePlaylist = async (token: string, playlistId: number, data: {
+  name: string,
+  description: string,
   links: string[],
-  isPublic: boolean 
+  isPublic: boolean
 }) => {
+  console.log("Envoi de la requête updatePlaylist:", {
+    playlistId,
+    data
+  });
+
   const response = await fetch(`${API_URL}/updateplaylists/${playlistId}`, {
     method: 'PUT',
     headers: {
@@ -92,6 +97,8 @@ export const updatePlaylist = async (token: string, playlistId: number, data: {
   });
 
   const responseData = await response.json();
+  console.log("Réponse updatePlaylist:", responseData);
+
   if (!response.ok) {
     throw new Error(responseData.message || 'Erreur lors de la modification de la playlist');
   }

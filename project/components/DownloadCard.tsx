@@ -12,13 +12,16 @@ interface VideoInfo {
   thumbnail: string;
   viewCount: number;
   likeCount: number;
+  url: string; 
 }
+
 
 interface DownloadCardProps {
   authLoading: boolean;
+  onAddToPlaylist: (url: string) => void;
 }
 
-export function DownloadCard({ authLoading }: DownloadCardProps) {
+export function DownloadCard({ authLoading, onAddToPlaylist }: DownloadCardProps) {
   const [videoUrl, setVideoUrl] = useState("");
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +60,8 @@ export function DownloadCard({ authLoading }: DownloadCardProps) {
         channel: response.channel,
         thumbnail: response.thumbnail,
         viewCount: response.viewCount,
-        likeCount: response.likeCount
+        likeCount: response.likeCount,
+        url: videoUrl
       });
       setVideoUrl("");
       setProgress(100);
@@ -73,8 +77,8 @@ export function DownloadCard({ authLoading }: DownloadCardProps) {
 
   return (
     <div className="bg-zinc-900/90 h-[600px] sm:h-[850px] md:h-[780px] rounded-xl p-8 backdrop-blur-sm border border-violet-500/20">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="relative">
+      <div className="relative">
+        <form onSubmit={handleSubmit}>
           <Input
             type="url"
             value={videoUrl}
@@ -94,23 +98,38 @@ export function DownloadCard({ authLoading }: DownloadCardProps) {
               className="w-6 h-6 invert"
             />
           </Button>
-        </div>
-  
-        {videoInfo && (
-          <div className="mt-6 space-y-6">
-            <div className="w-full h-[500px] rounded-lg overflow-hidden bg-zinc-800/50">
-              <img 
-                src={videoInfo.thumbnail}
-                alt={videoInfo.title}
-                className="w-full h-full object-contain" 
-              />
+        </form>
+      </div>
+
+      {videoInfo && (
+        <div className="mt-6 space-y-6">
+          <div className="w-full h-[500px] rounded-lg overflow-hidden bg-zinc-800/50">
+            <img 
+              src={videoInfo.thumbnail}
+              alt={videoInfo.title}
+              className="w-full h-full object-contain" 
+            />
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-2xl font-bold text-white truncate max-w-[60%]">
+                {videoInfo.title}
+              </h3>
+              <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                onClick={() => videoInfo && onAddToPlaylist(videoInfo.url)}
+                variant="ghost"
+                className="text-violet-500 hover:text-violet-400"
+              >
+                Ajouter à une playlist +
+              </Button>
+              </div>
             </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-2xl font-bold text-white truncate max-w-[60%]">
-                  {videoInfo.title}
-                </h3>
-                <div className="absolute bottom-4 right-7 flex space-x-6 text-base text-zinc-400 font-medium">
+            <p className="text-violet-400 text-lg font-medium">
+              {videoInfo.channel}
+            </p>
+            <div className="flex space-x-6 text-base text-zinc-400 font-medium ml-[830px]">
               <div className="flex items-center gap-2">
                 <Eye className="w-5 h-5" />
                 <span>{(videoInfo.viewCount || 0).toLocaleString()} vues</span>
@@ -120,24 +139,20 @@ export function DownloadCard({ authLoading }: DownloadCardProps) {
                 <span>{(videoInfo.likeCount || 0).toLocaleString()} likes</span>
               </div>
             </div>
-              </div>
-              <p className="text-violet-400 text-lg font-large">
-                {videoInfo.channel}
-              </p>
-            </div>
           </div>
-        )}
-        {isDownloading && (
-          <div className="absolute bottom-8 left-8 right-8 space-y-2">
-            <Progress value={progress} className="h-2" />
-            <p className="text-sm text-zinc-400 text-center">
-              Téléchargement en cours... {progress}%
-            </p>
-          </div>
-        )}
-  
-        {error && <p className="text-red-500 mt-4">{error}</p>}
-      </form>
+        </div>
+      )}
+
+      {isDownloading && (
+        <div className="absolute bottom-8 left-8 right-8 space-y-2">
+          <Progress value={progress} className="h-2" />
+          <p className="text-sm text-zinc-400 text-center">
+            Téléchargement en cours... {progress}%
+          </p>
+        </div>
+      )}
+
+      {error && <p className="text-red-500 mt-4">{error}</p>}
     </div>
   );
 }
