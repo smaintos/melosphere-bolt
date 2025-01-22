@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Trash2, Pencil, Download } from 'lucide-react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { EditPlaylistModal } from '@/components/EditPlaylistModal';
+import { Badge } from "@/components/ui/badge";
 import { createPlaylist, getPlaylists, deletePlaylist, updatePlaylist, downloadPlaylist } from '@/lib/api';
 
 interface Link {
@@ -206,6 +207,12 @@ export default function PlaylistsPage() {
                     <div className="flex justify-between items-start">
                       <div>
                         <h3 className="text-lg font-semibold">{playlist.name}</h3>
+                        <Badge 
+                            variant={playlist.isPublic ? "default" : "secondary"}
+                            className={playlist.isPublic ? "bg-violet-600" : "bg-zinc-600"}
+                          >
+                            {playlist.isPublic ? "Public" : "Privé"}
+                          </Badge>
                         <p className="text-zinc-400 text-sm mt-1">{playlist.description}</p>
                       </div>
                       <div className="flex gap-2">

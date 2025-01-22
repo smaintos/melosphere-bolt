@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { getPlaylists, updatePlaylist } from "@/lib/api";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Check } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface Playlist {
   id: number;
@@ -152,6 +152,12 @@ export default function AddPlaylist({ showCheckboxes = false, videoUrl, onPlayli
               )}
               <div>
                 <h3 className="text-white font-medium">{playlist.name}</h3>
+                <Badge 
+                  variant={playlist.isPublic ? "default" : "secondary"}
+                  className={playlist.isPublic ? "bg-violet-600" : "bg-zinc-600"}
+                >
+                  {playlist.isPublic ? "Public" : "Privé"}
+                </Badge>
                 <p className="text-zinc-400 text-sm">{playlist.description}</p>
               </div>
             </div>
