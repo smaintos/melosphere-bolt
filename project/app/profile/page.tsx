@@ -7,7 +7,14 @@ import { getUserProfile, updateUserEmail, updateUserPassword, deleteUserAccount,
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { User } from "lucide-react";
+import { User, Mail, Lock, AlertTriangle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
@@ -102,71 +109,159 @@ export default function ProfilePage() {
   return (
     <ProtectedRoute>
       <div className="flex-1 p-8">
-        <h1 className="text-3xl font-bold mb-8 text-white">Profil</h1>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card className="p-6 bg-zinc-900/50 border-violet-500/20 text-center">
-            <img
-              src={profile?.profilePicture ? `${API_URL}${profile.profilePicture}` : 'https://via.placeholder.com/150'}
-              alt="Profile"
-              className="w-32 h-32 rounded-full mx-auto mb-4"
-            />
-            <input type="file" onChange={handleProfilePictureChange} className="mb-4" />
-            <Button onClick={handleUploadProfilePicture} className="bg-violet-600 hover:bg-violet-700">
-              Mettre à jour la photo de profil
-            </Button>
-            {errorProfilePicture && <p className="text-red-500 text-sm mb-2">{errorProfilePicture}</p>}
-            {profile ? (
-              <div>
-                <h2 className="text-xl font-bold">{profile.username}</h2>
-                <p className="text-sm text-gray-400">{profile.email}</p>
+        <div className="max-w-4xl mx-auto">
+          <Card className="p-8 bg-zinc-900/50 border-violet-500/20">
+            <div className="flex flex-col items-center space-y-6">
+              {/* Photo de profil */}
+              <div className="relative">
+                <img
+                  src={profile?.profilePicture ? `${API_URL}${profile.profilePicture}` : 'https://via.placeholder.com/150'}
+                  alt="Profile"
+                  className="w-32 h-32 rounded-full border-4 border-violet-500/20"
+                />
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button 
+                      className="absolute bottom-0 right-0 bg-violet-600 p-2 rounded-full cursor-pointer hover:bg-violet-700 transition-colors"
+                    >
+                      <User className="w-4 h-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Photo de profil</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="flex flex-col items-center gap-4">
+                        <label 
+                          htmlFor="profile-upload" 
+                          className="cursor-pointer bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-md"
+                        >
+                          Choisir une photo
+                        </label>
+                        <input 
+                          id="profile-upload" 
+                          type="file" 
+                          onChange={handleProfilePictureChange} 
+                          className="hidden"
+                          accept="image/*"
+                        />
+                        {profilePicture && (
+                          <Button 
+                            onClick={handleUploadProfilePicture}
+                            className="w-full bg-violet-600 hover:bg-violet-700"
+                          >
+                            Envoyer la photo
+                          </Button>
+                        )}
+                        {errorProfilePicture && (
+                          <p className="text-red-500 text-sm">{errorProfilePicture}</p>
+                        )}
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
-            ) : (
-              <p className="text-sm text-gray-400">Chargement...</p>
+  
+              {/* Informations utilisateur */}
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-white">{profile?.username}</h2>
+                <p className="text-zinc-400">{profile?.email}</p>
+              </div>
+  
+              {/* Boutons d'action */}
+              <div className="flex gap-4 mt-6">
+                {/* Dialog Email */}
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      Changer l'email
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Changer l'email</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <Input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Nouvel email"
+                        className="bg-zinc-800/50"
+                      />
+                      <Button onClick={handleUpdateEmail} className="w-full">
+                        Mettre à jour
+                      </Button>
+                      {errorEmail && <p className="text-red-500 text-sm">{errorEmail}</p>}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+  
+                {/* Dialog Mot de passe */}
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="flex items-center gap-2">
+                      <Lock className="w-4 h-4" />
+                      Changer le mot de passe
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Changer le mot de passe</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <Input
+                        type="password"
+                        placeholder="Mot de passe actuel"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="bg-zinc-800/50"
+                      />
+                      <Input
+                        type="password"
+                        placeholder="Nouveau mot de passe"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="bg-zinc-800/50"
+                      />
+                      <Button onClick={handleUpdatePassword} className="w-full">
+                        Mettre à jour
+                      </Button>
+                      {errorPassword && <p className="text-red-500 text-sm">{errorPassword}</p>}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+  
+                {/* Dialog Suppression */}
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="destructive" className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4" />
+                      Supprimer le compte
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle className="text-red-500">Supprimer le compte</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <p className="text-zinc-400">Cette action est irréversible. Êtes-vous sûr de vouloir supprimer votre compte ?</p>
+                      <Button onClick={handleDeleteAccount} variant="destructive" className="w-full">
+                        Confirmer la suppression
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+  
+            {successMessage && (
+              <div className="mt-4 p-3 bg-green-500/20 border border-green-500/50 rounded-md text-green-400">
+                {successMessage}
+              </div>
             )}
-          </Card>
-
-          <Card className="p-6 bg-zinc-900/50 border-violet-500/20">
-            <h2 className="text-xl font-bold mb-4">Modifier l'Email</h2>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mb-2"
-            />
-            {errorEmail && <p className="text-red-500 text-sm mb-2">{errorEmail}</p>}
-            <Button onClick={handleUpdateEmail} className="bg-violet-600 hover:bg-violet-700">
-              Mettre à jour l'Email
-            </Button>
-          </Card>
-
-          <Card className="p-6 bg-zinc-900/50 border-violet-500/20">
-            <h2 className="text-xl font-bold mb-4">Modifier le Mot de Passe</h2>
-            <Input
-              type="password"
-              placeholder="Mot de passe actuel"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mb-2"
-            />
-            <Input
-              type="password"
-              placeholder="Nouveau mot de passe"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="mb-2"
-            />
-            {errorPassword && <p className="text-red-500 text-sm mb-2">{errorPassword}</p>}
-            <Button onClick={handleUpdatePassword} className="bg-violet-600 hover:bg-violet-700">
-              Mettre à jour le Mot de Passe
-            </Button>
-          </Card>
-
-          <Card className="p-6 bg-zinc-900/50 border-violet-500/20">
-            <h2 className="text-xl font-bold mb-4">Supprimer le Compte</h2>
-            <Button onClick={handleDeleteAccount} className="bg-red-600 hover:bg-red-700">
-              Supprimer le Compte
-            </Button>
           </Card>
         </div>
       </div>
