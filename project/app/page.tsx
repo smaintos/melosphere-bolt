@@ -1,4 +1,4 @@
-"use client";
+"use client"; //bac à sable 1
 
 import { DownloadCard } from "@/components/DownloadCard";
 import { SearchBar } from "@/components/SearchBar";
