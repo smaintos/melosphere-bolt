@@ -1,158 +1,170 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
+import { Sidebar, SidebarBody, SidebarLink } from "./ui/sidebar";
+import {
+  IconHome,
+  IconPlaylist,
+  IconUser,
+  IconLogin,
+  IconUserPlus,
+  IconLogout,
+  IconHistory,
+  IconUsers
+} from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
+import useAuth from "@/app/hooks/useAuth";
+import { motion } from "framer-motion";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Home, ListMusic, History, Users, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
-import useAuth from "@/app/hooks/useAuth"; // Importer le hook d'authentification
-import { getUserProfile } from "@/lib/api"; // Importer la fonction pour obtenir le profil utilisateur
+import { getUserProfile } from "@/lib/api";
 
-type StatusType = "Actif" | "Ne pas déranger" | "Inactif" | "Absent";
-
-const routes = [
-  {
-    label: "Accueil",
-    icon: Home,
-    href: "/",
-  },
-  {
-    label: "Playlists",
-    icon: ListMusic,
-    href: "/playlists",
-  },
-  {
-    label: "Historique",
-    icon: History,
-    href: "/history",
-  },
-  {
-    label: "Room",
-    icon: Users,
-    href: "/room",
-  },
-];
-
-export default function Sidebar() {
-  const pathname = usePathname();
-  const [status, setStatus] = useState<StatusType>("Actif");
-  const [menuOpen, setMenuOpen] = useState(false);
-  const { user, logout } = useAuth(); // Obtenir la méthode logout depuis le contexte
+export default function SidebarComponent() {
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
-    if (user) {
-      const fetchProfile = async () => {
+    const fetchProfile = async () => {
+      if (user) {
         try {
-          const data = await getUserProfile(localStorage.getItem('token') || '');
+          const token = localStorage.getItem('token');
+          if (!token) return;
+          const data = await getUserProfile(token);
           setProfile(data);
-        } catch (err: any) {
+        } catch (err) {
           console.error(err);
         }
-      };
-      fetchProfile();
-    }
+      }
+    };
+    fetchProfile();
   }, [user]);
 
-  const statusColors: Record<StatusType, string> = {
-    Actif: "bg-green-500",
-    "Ne pas déranger": "bg-red-500",
-    Inactif: "bg-gray-500",
-    Absent: "bg-yellow-500",
-  };
-
-  const toggleMenu = () => setMenuOpen((prev) => !prev);
-
   const handleLogout = () => {
-    logout(); // Appeler la méthode de déconnexion
+    logout();
+    router.push('/auth/login');
   };
+
+  const authenticatedLinks = [
+    {
+      label: "Accueil",
+      href: "/",
+      icon: <IconHome className="text-neutral-700 dark:text-white h-6 w-6 flex-shrink-0" />
+    },
+    {
+      label: "Playlists",
+      href: "/playlists",
+      icon: <IconPlaylist className="text-neutral-700 dark:text-white h-6 w-6 flex-shrink-0" />
+    },
+    {
+      label: "Historique",
+      href: "/history",
+      icon: <IconHistory className="text-neutral-700 dark:text-white h-6 w-6 flex-shrink-0" />
+    },
+    {
+      label: "Room",
+      href: "/room",
+      icon: <IconUsers className="text-neutral-700 dark:text-white h-6 w-6 flex-shrink-0" />
+    }
+  ];
+
+  const unauthenticatedLinks = [
+    {
+      label: "Connexion",
+      href: "/auth/login",
+      icon: <IconLogin className="text-neutral-700 dark:text-neutral-200 h-6 w-6 flex-shrink-0" />
+    },
+    {
+      label: "Inscription",
+      href: "/auth/register",
+      icon: <IconUserPlus className="text-neutral-700 dark:text-neutral-200 h-6 w-6 flex-shrink-0" />
+    }
+  ];
+
+  const links = user ? authenticatedLinks : unauthenticatedLinks;
 
   return (
-    <div className="relative flex flex-col bg-zinc-900 border-r border-zinc-800 w-20 h-screen">
-      {/* Logo */}
-      <div className="p-4 flex items-center justify-center">
-        <span className="text-violet-500 font-bold">M</span>
-      </div>
+    <Sidebar open={open} setOpen={setOpen}>
+      <SidebarBody className="h-screen flex flex-col justify-between py-8">
+        <div className="flex flex-col">
+          {open ? <Logo /> : <LogoIcon />}
 
-      {/* Spacer pour descendre les catégories */}
-      <div className="mt-32"></div>
-
-      {/* Navigation */}
-      <div className="flex-1">
-        {routes.map((route) => (
-          <Link
-            key={route.href}
-            href={route.href}
-            className={cn(
-              "flex items-center py-3 px-4 relative group",
-              pathname === route.href
-                ? "text-violet-500"
-                : "text-zinc-400 hover:text-white",
-              "justify-center"
-            )}
-          >
-            <route.icon className="w-5 h-5 flex-shrink-0" />
-            {/* Infobulle pour le label */}
-            <span className="absolute left-full ml-2 px-2 py-1 bg-zinc-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap z-50">
-              {route.label}
-            </span>
-          </Link>
-        ))}
-      </div>
-
-      {/* Photo de profil, état de connexion et déconnexion */}
-      <div className="p-4 flex flex-col items-center relative">
-        <div className="relative group">
-          {/* Avatar */}
-          <Link href="/profile">
-            <img
-              src={profile?.profilePicture ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${profile.profilePicture}` : 'https://via.placeholder.com/40'}
-              alt="Profile"
-              className="w-14 h-13 rounded-full border-2 border-transparent group-hover:border-violet-500 transition-all duration-300"
-            />
-          </Link>
-          {/* Indicateur de statut */}
-          <span
-            className={cn(
-              "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-zinc-900 cursor-pointer",
-              statusColors[status],
-              "transition-all duration-300 ease-in-out hover:scale-125"
-            )}
-            onClick={toggleMenu}
-          ></span>
+          <div className="flex flex-col gap-6 pl-4 mt-60">
+            {links.map((link, idx) => (
+              <SidebarLink 
+                key={idx} 
+                link={link}
+                className="text-lg"
+              />
+            ))}
+          </div>
         </div>
 
-        {/* Menu déroulant */}
-        {menuOpen && (
-          <div className="absolute bottom-12 left-full ml-2 mt-1 bg-zinc-800 text-white text-sm rounded shadow-lg w-48 z-50">
-            {/* Statut */}
-            {Object.keys(statusColors).map((state) => (
-              <button
-                key={state}
-                className={cn(
-                  "px-4 py-2 hover:bg-zinc-700 w-full text-left",
-                  status === state ? "text-violet-500" : "text-white"
-                )}
-                onClick={() => {
-                  setStatus(state as StatusType); // Cast explicite pour TypeScript
-                  setMenuOpen(false);
-                }}
-              >
-                {state}
-              </button>
-            ))}
+        <div className="flex flex-col gap-8 pl-3">
+          {user && (
+            <SidebarLink 
+              link={{
+                label: "Déconnexion",
+                href: "/",
+                icon: <IconLogout className="text-red-500 h-6 w-6 flex-shrink-0" />
+              }}
+              className="text-red-500 hover:text-red-600 text-lg"
+              onClick={handleLogout}
+            />
+          )}
 
-            {/* Bouton Déconnexion */}
-            <button
-              className="px-4 py-2 hover:bg-red-600 w-full text-left text-red-500 hover:text-white flex items-center gap-2"
-              onClick={handleLogout} // Utiliser la fonction de déconnexion
-            >
-              <LogOut className="w-4 h-4" />
-              Déconnexion
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+          {user && profile && (
+            <Link href="/profile" className="flex justify-center">
+              <motion.img
+                src={profile?.profilePicture ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${profile.profilePicture}` : 'https://via.placeholder.com/40'}
+                alt="Profile"
+                className={cn(
+                  "rounded-full border-2 border-transparent hover:border-violet-500 transition-all duration-300",
+                  open ? "w-20 h-20" : "w-10 h-10"
+                )}
+                initial={false}
+                animate={{
+                  width: open ? 80 : 40,
+                  height: open ? 80 : 40
+                }}
+                transition={{
+                  duration: 0.3,
+                  ease: "easeInOut"
+                }}
+              />
+            </Link>
+          )}
+        </div>
+      </SidebarBody>
+    </Sidebar>
   );
 }
+
+    const Logo = () => {
+      return (
+        <Link href="/" className="font-normal flex items-center text-sm text-black py-1 relative z-20">
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="font-medium text-black dark:text-white whitespace-pre pl-20"
+          >
+            MeloSphere
+          </motion.span>
+        </Link>
+      );
+    };
+
+    const LogoIcon = () => {
+      return (
+        <Link href="/" className="font-normal flex items-center text-sm text-black py-1 relative z-20">
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="font-medium text-black dark:text-white whitespace-pre pl-5"
+          >
+            M
+          </motion.span>
+        </Link>
+      );
+    };

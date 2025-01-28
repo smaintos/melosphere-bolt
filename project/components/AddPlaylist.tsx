@@ -142,13 +142,13 @@ export default function AddPlaylist({ showCheckboxes = false, videoUrl, onPlayli
           </Button>
         </div>
       ) : (
-        <ScrollArea className="h-[600px] w-[550px]">
+        <ScrollArea className="h-[600px] w-full">
           <div className="space-y-4 pr-4">
             {playlists.map((playlist) => (
               <div 
                 key={playlist.id} 
                 className="flex items-center gap-4 p-4 bg-zinc-800 rounded-lg relative border border-zinc-700/50 hover:border-violet-500/50 hover:shadow-[0_0_57px_rgba(139,92,246,0.2)] transition-all duration-300"
-                >
+              >
                 {showCheckboxes && (
                   <Checkbox
                     checked={selectedPlaylistId === playlist.id}
@@ -156,35 +156,45 @@ export default function AddPlaylist({ showCheckboxes = false, videoUrl, onPlayli
                     className="border-violet-500/20 data-[state=checked]:bg-violet-500"
                   />
                 )}
+  
                 <div className="flex-1">
-                  <div className="flex flex-col">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-white font-medium">{playlist.name}</h3>
-                      <Badge 
-                        variant={playlist.isPublic ? "default" : "secondary"}
-                        className={`${playlist.isPublic ? "bg-violet-600" : "bg-zinc-600"} absolute top-2 right-2`}
-                      >
-                        {playlist.isPublic ? "Public" : "Privé"}
-                      </Badge>
-                    </div>
-                    <p className="text-zinc-400 text-sm mt-1">{playlist.description}</p>
-                    <span className="text-zinc-500 text-xs mt-2">
-                      {playlist.links.length} {playlist.links.length > 1 ? "titres" : "titre"}
-                    </span>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-zinc-200 font-medium">{playlist.name}</h3>
+                    <Badge 
+                      variant={playlist.isPublic ? "default" : "secondary"}
+                      className={playlist.isPublic ? "bg-violet-600" : "bg-zinc-600"}
+                    >
+                      {playlist.isPublic ? "Public" : "Privé"}
+                    </Badge>
                   </div>
+                  <p className="text-sm text-zinc-400">{playlist.description}</p>
+                  <p className="text-xs text-zinc-500 mt-2">
+                    {playlist.links.length} {playlist.links.length > 1 ? "vidéos" : "vidéo"}
+                  </p>
                 </div>
               </div>
             ))}
+  
+            {/* Bouton Ajouter à la playlist */}
+            {showCheckboxes && selectedPlaylistId && (
+              <div className="mt-6">
+                <Button
+                  onClick={handleAddToPlaylist}
+                  className="w-full bg-violet-600 hover:bg-violet-700"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <div className="flex items-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-r-transparent" />
+                      Ajout en cours...
+                    </div>
+                  ) : (
+                    "Ajouter à la playlist"
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
-
-          {showCheckboxes && selectedPlaylistId && (
-            <Button 
-              onClick={handleAddToPlaylist}
-              className="mt-4 w-full bg-violet-600 hover:bg-violet-700"
-            >
-              Ajouter à la playlist
-            </Button>
-          )}
         </ScrollArea>
       )}
     </div>
