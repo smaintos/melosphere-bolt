@@ -31,8 +31,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex-1 p-8 flex items-center justify-center">
-      <Card className="w-full max-w-md p-6 bg-zinc-900/50 border-violet-500/20">
+    <div className="flex-1 p-8 mt-48 flex items-center justify-center">
+      <Card className="w-full max-w-md p-6 bg-zinc-900/100 border-violet-500/50">
         <h1 className="text-2xl font-bold mb-6 text-center">Se connecter</h1>
         
         <form className="space-y-4" onSubmit={handleLogin}>

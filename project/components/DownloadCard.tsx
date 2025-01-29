@@ -83,7 +83,7 @@ export function DownloadCard({ authLoading, onAddToPlaylist }: DownloadCardProps
             type="url"
             value={videoUrl}
             onChange={(e) => setVideoUrl(e.target.value)}
-            placeholder="Collez un lien YouTube ici..."
+            placeholder="Collez un lien YouTube ici...."
             className="bg-zinc-800/50 border-violet-500/70 text-white pr-20 h-14 text-lg rounded-xl"
           />
           <Button 
