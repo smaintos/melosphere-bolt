@@ -110,7 +110,7 @@ export default function ProfilePage() {
     <ProtectedRoute>
       <div className="flex-1 p-8">
         <div className="max-w-4xl mx-auto">
-          <Card className="p-8 bg-zinc-900/50 border-violet-500/20">
+          <Card className="p-8 bg-zinc-900/100 border-violet-500/50">
             <div className="flex flex-col items-center space-y-6">
               {/* Photo de profil */}
               <div className="relative">
@@ -124,7 +124,7 @@ export default function ProfilePage() {
                     <Button 
                       className="absolute bottom-0 right-0 bg-violet-600 p-2 rounded-full cursor-pointer hover:bg-violet-700 transition-colors"
                     >
-                      <User className="w-4 h-4" />
+                      <User className="w-6  h-8" />
                     </Button>
                   </DialogTrigger>
                   <DialogContent>

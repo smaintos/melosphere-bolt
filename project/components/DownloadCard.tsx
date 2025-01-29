@@ -76,7 +76,7 @@ export function DownloadCard({ authLoading, onAddToPlaylist }: DownloadCardProps
   };
 
   return (
-    <div className="bg-zinc-900/90 h-[600px] sm:h-[850px] md:h-[780px] rounded-xl p-8 backdrop-blur-sm border border-violet-500/20">
+    <div className="bg-zinc-900/100 h-[600px] sm:h-[850px] md:h-[780px] rounded-xl p-8 backdrop-blur-sm border border-violet-500/50">
       <div className="relative">
         <form onSubmit={handleSubmit}>
           <Input
@@ -84,13 +84,13 @@ export function DownloadCard({ authLoading, onAddToPlaylist }: DownloadCardProps
             value={videoUrl}
             onChange={(e) => setVideoUrl(e.target.value)}
             placeholder="Collez un lien YouTube ici..."
-            className="bg-zinc-800/50 border-violet-500/20 text-white pr-20 h-14 text-lg rounded-xl"
+            className="bg-zinc-800/50 border-violet-500/70 text-white pr-20 h-14 text-lg rounded-xl"
           />
           <Button 
             type="submit" 
             size="icon"
             disabled={isDownloading || authLoading}
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-violet-600 hover:bg-violet-700 p-2 rounded-lg"
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-zinc-900/70 hover:bg-violet-700 p-2 rounded-lg"
           >
             <img 
               src="https://img.icons8.com/?size=100&id=3685&format=png" 
@@ -111,11 +111,11 @@ export function DownloadCard({ authLoading, onAddToPlaylist }: DownloadCardProps
             />
           </div>
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-2xl font-bold text-white truncate max-w-[60%]">
-                {videoInfo.title}
-              </h3>
-              <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-2xl font-bold text-white truncate max-w-[60%]">
+              {videoInfo.title}
+            </h3>
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
                 onClick={() => videoInfo && onAddToPlaylist(videoInfo.url)}
@@ -124,12 +124,13 @@ export function DownloadCard({ authLoading, onAddToPlaylist }: DownloadCardProps
               >
                 Ajouter à une playlist +
               </Button>
-              </div>
             </div>
+          </div>
+          <div className="flex items-center justify-between">
             <p className="text-violet-400 text-lg font-medium">
               {videoInfo.channel}
             </p>
-            <div className="flex space-x-6 text-base text-zinc-400 font-medium ml-[830px]">
+            <div className="flex space-x-6 text-base text-zinc-400 font-medium">
               <div className="flex items-center gap-2">
                 <Eye className="w-5 h-5" />
                 <span>{(videoInfo.viewCount || 0).toLocaleString()} vues</span>
@@ -140,6 +141,7 @@ export function DownloadCard({ authLoading, onAddToPlaylist }: DownloadCardProps
               </div>
             </div>
           </div>
+        </div>
         </div>
       )}
 

@@ -17,7 +17,7 @@ interface PlaylistCardProps {
   
   export default function PlaylistCard({ playlist, onDownload }: PlaylistCardProps) {
     return (
-      <Card className="bg-zinc-900/90 p-6 border-violet-500/20">
+      <Card className="bg-zinc-900/90 p-6 border-violet-500/50 h-[150px] w-[350px]">
         <div className="space-y-4">
           <div className="flex justify-between items-start">
             <div>

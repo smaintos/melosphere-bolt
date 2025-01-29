@@ -147,7 +147,7 @@ export default function SidebarComponent() {
           <motion.span
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="font-medium text-black dark:text-white whitespace-pre pl-20"
+            className="font-medium text-lg text-black dark:text-white whitespace-pre pl-20"
           >
             MeloSphere
           </motion.span>
