@@ -86,57 +86,54 @@ export default function SidebarComponent() {
 
   return (
     <Sidebar open={open} setOpen={setOpen}>
-      <SidebarBody className="h-screen flex flex-col justify-between py-8">
-        <div className="flex flex-col">
-          {open ? <Logo /> : <LogoIcon />}
+<SidebarBody className="h-screen flex flex-col justify-between py-8">
+  <div className="flex flex-col">
+    {open ? <Logo /> : <LogoIcon />}
 
-          <div className="flex flex-col gap-6 pl-4 mt-60">
-            {links.map((link, idx) => (
-              <SidebarLink 
-                key={idx} 
-                link={link}
-                className="text-lg"
-              />
-            ))}
-          </div>
-        </div>
+    {/* Réduction du mt-60 à mt-12 */}
+    <div className="flex flex-col gap-6 pl-4 mt-12"> 
+      {links.map((link, idx) => (
+        <SidebarLink 
+          key={idx} 
+          link={link}
+          className="text-lg"
+        />
+      ))}
+    </div>
+  </div>
 
-        <div className="flex flex-col gap-8 pl-3">
-          {user && (
-            <SidebarLink 
-              link={{
-                label: "Déconnexion",
-                href: "/",
-                icon: <IconLogout className="text-red-500 h-6 w-6 flex-shrink-0" />
-              }}
-              className="text-red-500 hover:text-red-600 text-lg"
-              onClick={handleLogout}
-            />
-          )}
+  <div className="flex flex-col gap-8 pl-3">
+    {user && (
+      <SidebarLink 
+        link={{
+          label: "Déconnexion",
+          href: "/",
+          icon: <IconLogout className="text-red-500 h-6 w-6 flex-shrink-0" />
+        }}
+        className="text-red-500 hover:text-red-600 text-lg"
+        onClick={handleLogout}
+      />
+    )}
 
-          {user && profile && (
-            <Link href="/profile" className="flex justify-center">
-              <motion.img
-                src={profile?.profilePicture ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${profile.profilePicture}` : 'https://via.placeholder.com/40'}
-                alt="Profile"
-                className={cn(
-                  "rounded-full border-2 border-transparent hover:border-violet-500 transition-all duration-300",
-                  open ? "w-20 h-20" : "w-10 h-10"
-                )}
-                initial={false}
-                animate={{
-                  width: open ? 80 : 40,
-                  height: open ? 80 : 40
-                }}
-                transition={{
-                  duration: 0.3,
-                  ease: "easeInOut"
-                }}
-              />
-            </Link>
-          )}
-        </div>
-      </SidebarBody>
+    {user && profile && (
+      <Link href="/profile" className="flex justify-center">
+        <motion.img
+          src={profile?.profilePicture ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${profile.profilePicture}` : 'https://via.placeholder.com/40'}
+          alt="Profile"
+          className="rounded-full border-2 border-transparent hover:border-violet-500 transition-all duration-300"
+          animate={{
+            width: open ? "56px" : "40px", 
+            height: open ? "56px" : "40px"
+          }}
+          transition={{
+            duration: 0.3,
+            ease: "easeInOut"
+          }}
+        />
+      </Link>
+    )}
+  </div>
+</SidebarBody>
     </Sidebar>
   );
 }
