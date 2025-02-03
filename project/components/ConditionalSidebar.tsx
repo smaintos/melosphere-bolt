@@ -15,7 +15,7 @@ export default function ConditionalSidebar() {
   const shouldHideSidebar = noSidebarRoutes.some(route => pathname.startsWith(route));
 
   if (shouldHideSidebar) {
-    return null; // Ne rien afficher
+    return null; // Ne rien afficher 
   }
 
   return <Sidebar />;

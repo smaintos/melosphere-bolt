@@ -118,15 +118,15 @@ export default function AddPlaylist({ showCheckboxes = false, videoUrl, onPlayli
 
   if (isLoading) {
     return (
-      <div className="bg-zinc-900/100 h-[600px] sm:h-[850px] md:h-[780px] rounded-xl p-8 backdrop-blur-sm border border-violet-500/20">
+      <div className="bg-zinc-900/100 h-auto min-h-[500px] max-h-[85vh] rounded-xl p-4 md:p-8 backdrop-blur-sm border border-violet-500/20 overflow-y-auto">
         <p className="text-zinc-400">Chargement...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-zinc-900/90 h-[600px] sm:h-[850px] md:h-[780px] rounded-xl p-8 backdrop-blur-sm border border-violet-500/50">
-      <h1 className="text-2xl text-white mb-6">Playlists</h1>
+    <div className="bg-zinc-900/90 h-auto min-h-[500px] max-h-[85vh] rounded-xl p-4 md:p-8 backdrop-blur-sm border border-violet-500/50 overflow-y-auto">
+    <h1 className="text-2xl text-white mb-6">Playlists</h1>
       {!hasPlaylists ? (
         <div className="flex flex-col items-center justify-center h-full space-y-6">
           <h2 className="text-2xl text-zinc-400/60 text-lg text-center">
