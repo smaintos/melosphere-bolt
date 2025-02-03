@@ -70,7 +70,7 @@ export default function AddPlaylist({ showCheckboxes = false, videoUrl, onPlayli
         newVideoUrl: videoUrl
       });
 
-      // Mettre à jour la playlist avec le nouveau lien
+      // Mettre à jour la playlist avec le nouveau liennn
       const updatedPlaylist = await updatePlaylist(token, selectedPlaylistId, {
         name: playlist.name,
         description: playlist.description,
