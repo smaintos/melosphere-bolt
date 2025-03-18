@@ -14,7 +14,7 @@ interface SearchPlaylist {
 }
 
 export const registerUser = async (username: string, email: string, password: string) => {
-  const response = await fetch(`${API_URL}/register`, {
+  const response = await fetch(`${API_URL}/api/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, email, password }),
@@ -28,7 +28,7 @@ export const registerUser = async (username: string, email: string, password: st
 };
 
 export const loginUser = async (email: string, password: string) => {
-  const response = await fetch(`${API_URL}/login`, {
+  const response = await fetch(`${API_URL}/api/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
@@ -42,7 +42,7 @@ export const loginUser = async (email: string, password: string) => {
 };
 
 export const createPlaylist = async (token: string, name: string, description: string, links: string[], isPublic: boolean) => {
-  const response = await fetch(`${API_URL}/playlists`, {
+  const response = await fetch(`${API_URL}/api/playlists`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -60,7 +60,7 @@ export const createPlaylist = async (token: string, name: string, description: s
 
 
 export const getPlaylists = async (token: string) => {
-  const response = await fetch(`${API_URL}/getplaylists`, {
+  const response = await fetch(`${API_URL}/api/getplaylists`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -74,7 +74,7 @@ export const getPlaylists = async (token: string) => {
   return data;
 };
 export const deletePlaylist = async (token: string, playlistId: number) => {
-  const response = await fetch(`${API_URL}/playlists/${playlistId}`, {
+  const response = await fetch(`${API_URL}/api/playlists/${playlistId}`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -92,7 +92,7 @@ export const searchPlaylists = async (token: string, query: string): Promise<Sea
   // Log pour déboguer
   console.log("Calling API with query:", query);
   
-  const response = await fetch(`${API_URL}/search/playlists?query=${encodeURIComponent(query)}`, {
+  const response = await fetch(`${API_URL}/api/search/playlists?query=${encodeURIComponent(query)}`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -122,7 +122,7 @@ export const updatePlaylist = async (token: string, playlistId: number, data: {
     data
   });
 
-  const response = await fetch(`${API_URL}/updateplaylists/${playlistId}`, {
+  const response = await fetch(`${API_URL}/api/updateplaylists/${playlistId}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -142,7 +142,7 @@ export const updatePlaylist = async (token: string, playlistId: number, data: {
 
 export const downloadPlaylist = async (token: string, playlistId: number) => {
   try {
-    const response = await fetch(`${API_URL}/download-playlist`, {
+    const response = await fetch(`${API_URL}/api/download-playlist`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -180,7 +180,7 @@ export const uploadProfilePicture = async (token: string, file: File) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`${API_URL}/upload-profile-picture`, {
+  const response = await fetch(`${API_URL}/api/upload-profile-picture`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -198,7 +198,7 @@ export const uploadProfilePicture = async (token: string, file: File) => {
 };
 
 export const getHistory = async (token: string) => {
-  const response = await fetch(`${API_URL}/history`, {
+  const response = await fetch(`${API_URL}/api/history`, {
     headers: {
       'Authorization': `Bearer ${token}`,
     },
@@ -212,7 +212,7 @@ export const getHistory = async (token: string) => {
 };
 
 export const getRoom = async (token: string) => {
-  const response = await fetch(`${API_URL}/room`, {
+  const response = await fetch(`${API_URL}/api/room`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -227,7 +227,7 @@ export const getRoom = async (token: string) => {
 };
 
 export const getUserProfile = async (token: string) => {
-  const response = await fetch(`${API_URL}/profile`, {
+  const response = await fetch(`${API_URL}/api/profile`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -242,7 +242,7 @@ export const getUserProfile = async (token: string) => {
 };
 
 export const updateUserEmail = async (token: string, email: string) => {
-  const response = await fetch(`${API_URL}/update-email`, {
+  const response = await fetch(`${API_URL}/api/update-email`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -260,7 +260,7 @@ export const updateUserEmail = async (token: string, email: string) => {
 };
 
 export const updateUserPassword = async (token: string, password: string, newPassword: string) => {
-  const response = await fetch(`${API_URL}/update-password`, {
+  const response = await fetch(`${API_URL}/api/update-password`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -278,7 +278,7 @@ export const updateUserPassword = async (token: string, password: string, newPas
 };
 
 export const deleteUserAccount = async (token: string) => {
-  const response = await fetch(`${API_URL}/delete-account`, {
+  const response = await fetch(`${API_URL}/api/delete-account`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -301,7 +301,7 @@ export const deleteUserAccount = async (token: string) => {
  */
 export const downloadMp3 = async (videoUrl: string, token: string) => {
   const encodedUrl = encodeURIComponent(videoUrl);
-  const response = await fetch(`${API_URL}/downloadMp3?videoUrl=${encodedUrl}`, {
+  const response = await fetch(`${API_URL}/api/downloadMp3?videoUrl=${encodedUrl}`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -318,7 +318,7 @@ export const downloadMp3 = async (videoUrl: string, token: string) => {
 
 export const handleDownloadAndSend = async (videoUrl: string, token: string) => {
   try {
-    const downloadResponse = await fetch(`${API_URL}/download`, {
+    const downloadResponse = await fetch(`${API_URL}/api/download`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -335,7 +335,7 @@ export const handleDownloadAndSend = async (videoUrl: string, token: string) => 
     const data = await downloadResponse.json();
     
     // Une fois que le fichier est prêt, on le récupère
-    const fileResponse = await fetch(`${API_URL}/send-file/${data.fileName}`, {
+    const fileResponse = await fetch(`${API_URL}/api/send-file/${data.fileName}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
