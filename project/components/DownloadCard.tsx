@@ -4,6 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { useState } from "react";
 import { handleDownloadAndSend } from "@/lib/api";
 import { Heart, Eye } from "lucide-react";
+import Image from "next/image";
 
 
 interface VideoInfo {
@@ -68,7 +69,8 @@ export function DownloadCard({ authLoading, onAddToPlaylist }: DownloadCardProps
       clearInterval(progressInterval);
 
     } catch (err: any) {
-      setError(err.message || "Erreur lors du téléchargement.");
+      console.error('Erreur de téléchargement:', err);
+      setError("Il y&apos;a un probleme avec votre fichier");
       setProgress(0);
     } finally {
       setIsDownloading(false);
@@ -90,18 +92,46 @@ export function DownloadCard({ authLoading, onAddToPlaylist }: DownloadCardProps
             type="submit" 
             size="icon"
             disabled={isDownloading || authLoading}
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-violet-600 hover:bg-violet-700 p-2 rounded-lg"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-transparent hover:bg-transparent"
           >
-            <img 
-              src="https://img.icons8.com/?size=100&id=3685&format=png" 
-              alt="download"
-              className="w-6 h-6 invert"
-            />
+            <div className="hover-rotate-grow">
+              <Image 
+                src="https://img.icons8.com/dotty/80/mesh.png"
+                alt="mesh"
+                width={28}
+                height={28}
+                className="invert"
+              />
+            </div>
           </Button>
         </form>
       </div>
 
-      {videoInfo && (
+      {error && (
+        <div className="mt-8 flex flex-col items-center justify-center h-[400px]">
+          <svg className="w-24 h-24 text-zinc-600 mb-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+          </svg>
+          <h2 className="text-3xl font-bold text-red-500 mb-4 text-center">
+            Il y&apos;a un probleme avec votre fichier
+          </h2>
+          <p className="text-xl text-zinc-400 text-center max-w-md mb-8">
+            Cela peut arriver, cette erreur sera réparée dans la v.2 de Melosphere
+          </p>
+          <Button 
+            variant="outline" 
+            className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 px-8 py-2 text-lg"
+            onClick={() => {
+              setError(null);
+              setVideoUrl("");
+            }}
+          >
+            Réessayer
+          </Button>
+        </div>
+      )}
+
+      {!error && videoInfo && (
         <div className="mt-6 space-y-6">
           <div className="w-full h-[500px] rounded-lg overflow-hidden bg-zinc-800/50">
             <img 
@@ -152,7 +182,17 @@ export function DownloadCard({ authLoading, onAddToPlaylist }: DownloadCardProps
         </div>
       )}
 
-      {error && <p className="text-red-500 mt-4">{error}</p>}
+      {/* Animation pour le bouton */}
+      <style jsx global>{`
+        @keyframes rotate-right {
+          from { transform: rotate(0deg) scale(1); }
+          to { transform: rotate(360deg) scale(1.3); }
+        }
+        
+        .hover-rotate-grow:hover {
+          animation: rotate-right 0.4s linear infinite;
+        }
+      `}</style>
     </div>
   );
 }

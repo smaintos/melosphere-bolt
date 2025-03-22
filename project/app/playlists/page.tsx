@@ -26,6 +26,7 @@ interface Playlist {
   name: string;
   description: string;
   links: Link[];
+  isPublic: boolean;
 }
 
 export default function PlaylistsPage() {
@@ -39,6 +40,9 @@ export default function PlaylistsPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadError, setDownloadError] = useState(false);
 
   useEffect(() => {
     const fetchPlaylists = async () => {
@@ -104,7 +108,7 @@ export default function PlaylistsPage() {
     }
   };
 
-  const handleUpdatePlaylist = async (playlistId: number, data: { name: string; description: string; links: string[] }) => {
+  const handleUpdatePlaylist = async (playlistId: number, data: { name: string; description: string; links: string[]; isPublic: boolean }) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -123,14 +127,29 @@ export default function PlaylistsPage() {
 
   const handleDownloadPlaylist = async (playlistId: number) => {
     try {
+      setIsDownloading(true);
+      setDownloadProgress(0);
+      setDownloadError(false);
+      
       const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('Token manquant');
       }
 
-      await downloadPlaylist(token, playlistId);
+      await downloadPlaylist(token, playlistId, (progress) => {
+        setDownloadProgress(progress);
+        if (progress === 100) {
+          // Garder le message "Téléchargement terminé" pendant 1 seconde avant de fermer
+          setTimeout(() => {
+            setIsDownloading(false);
+          }, 1000);
+        }
+      });
     } catch (err: any) {
-      setError(err.message);
+      console.error('Erreur lors du téléchargement:', err);
+      setError('Il y\'a un probleme avec votre fichier');
+      setDownloadError(true);
+      // On garde l'état isDownloading à true pour afficher le message d'erreur
     }
   };
 
@@ -169,25 +188,34 @@ export default function PlaylistsPage() {
                       ...newPlaylist,
                       isPublic: e.target.value === "public"
                     })}
-                    className="bg-zinc-800/50 border-violet-500/20 rounded-md p-2 text-sm"
+                    className="bg-black border-violet-500/20 rounded-md p-2 text-sm text-white"
                   >
-                    <option value="private">Privée</option>
-                    <option value="public">Publique</option>
+                    <option value="private" className="bg-black text-white">Privée</option>
+                    <option value="public" className="bg-black text-white">Publique</option>
                   </select>
                 </div>
-                {newPlaylist.links.map((link, index) => (
-                  <Input
-                    key={index}
-                    placeholder="Lien YouTube"
-                    value={link}
-                    onChange={(e) => {
-                      const newLinks = [...newPlaylist.links];
-                      newLinks[index] = e.target.value;
-                      setNewPlaylist({ ...newPlaylist, links: newLinks });
-                    }}
-                    className="bg-zinc-800/50"
-                  />
-                ))}
+                
+                {/* Container avec scrollbar pour les liens */}
+                <div className="space-y-4">
+                  <ScrollArea className={`${newPlaylist.links.length > 3 ? 'h-48' : ''} w-full`}>
+                    <div className="space-y-4 pr-6 pb-2 pl-1 pt-1">
+                      {newPlaylist.links.map((link, index) => (
+                        <Input
+                          key={index}
+                          placeholder="Lien YouTube"
+                          value={link}
+                          onChange={(e) => {
+                            const newLinks = [...newPlaylist.links];
+                            newLinks[index] = e.target.value;
+                            setNewPlaylist({ ...newPlaylist, links: newLinks });
+                          }}
+                          className="bg-zinc-800/50"
+                        />
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+                
                 <div className="flex gap-4">
                   <Button onClick={addLink} variant="outline">
                     <Plus className="w-4 h-4 mr-2" />
@@ -242,24 +270,34 @@ export default function PlaylistsPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => setEditingPlaylist(playlist)}
+                            className="group relative"
                           >
                             <Pencil className="w-5 h-5" />
+                            <span className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                              Modifier
+                            </span>
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="text-green-500 hover:text-green-700 hover:bg-green-500/10"
+                            className="text-green-500 hover:text-green-700 hover:bg-green-500/10 group relative"
                             onClick={() => handleDownloadPlaylist(playlist.id)}
                           >
                             <Download className="w-5 h-5" />
+                            <span className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                              Télécharger
+                            </span>
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="text-red-500 hover:text-red-700 hover:bg-red-500/10"
+                            className="text-red-500 hover:text-red-700 hover:bg-red-500/10 group relative"
                             onClick={() => handleDeletePlaylist(playlist.id)}
                           >
                             <Trash2 className="w-5 h-5" />
+                            <span className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                              Supprimer
+                            </span>
                           </Button>
                         </div>
                       </div>
@@ -277,6 +315,54 @@ export default function PlaylistsPage() {
             onClose={() => setEditingPlaylist(null)}
             onUpdate={handleUpdatePlaylist}
           />
+        )}
+
+        {/* Overlay de téléchargement avec progression */}
+        {isDownloading && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <div className="bg-zinc-900 p-8 rounded-xl w-96 shadow-xl border border-violet-500/20">
+              {downloadError ? (
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto mb-6 flex items-center justify-center rounded-full bg-zinc-800">
+                    <svg className="w-10 h-10 text-zinc-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl text-center text-white mb-4">
+                    Il y&apos;a un probleme avec votre fichier
+                  </h3>
+                  <p className="text-zinc-400 mb-6">
+                    Cela peut arriver, cette erreur sera réparée dans la v.2 de Melosphere
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="border-zinc-700 text-zinc-400 hover:bg-zinc-800"
+                    onClick={() => {
+                      setIsDownloading(false);
+                      setDownloadError(false);
+                    }}
+                  >
+                    Fermer
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <h3 className="text-xl text-center text-white mb-6">
+                    {downloadProgress < 100 ? "Téléchargement en cours..." : "Téléchargement terminé !"}
+                  </h3>
+                  
+                  <div className="w-full bg-zinc-800 rounded-full h-4 mb-6">
+                    <div 
+                      className="bg-violet-600 h-4 rounded-full transition-all duration-300"
+                      style={{ width: `${downloadProgress}%` }}
+                    ></div>
+                  </div>
+                  
+                  <p className="text-center text-lg text-violet-400 font-medium">{downloadProgress}%</p>
+                </>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </ProtectedRoute>

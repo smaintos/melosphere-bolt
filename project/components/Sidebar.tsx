@@ -46,26 +46,48 @@ export default function SidebarComponent() {
     router.push('/auth/login');
   };
 
+  const clearSearch = () => {
+    // Effacer la recherche via la fonction globale si on est sur la page d'accueil
+    if (window.resetSearch) {
+      window.resetSearch();
+    } else {
+      // Sinon, juste nettoyer le localStorage pour le prochain chargement de la page
+      localStorage.setItem('searchQuery', '');
+    }
+  };
+
   const authenticatedLinks = [
     {
       label: "Accueil",
       href: "/",
-      icon: <IconHome className="text-neutral-700 dark:text-white h-6 w-6 flex-shrink-0" />
+      icon: <IconHome className={cn(
+        "text-violet-500 dark:text-violet-400 h-6 w-6 flex-shrink-0",
+        !open && "-ml-4"
+      )} />
     },
     {
       label: "Playlists",
-      href: "/playlists",
-      icon: <IconPlaylist className="text-neutral-700 dark:text-white h-6 w-6 flex-shrink-0" />
+      href: "/playlists", 
+      icon: <IconPlaylist className={cn(
+        "text-violet-500 dark:text-violet-400 h-6 w-6 flex-shrink-0",
+        !open && "-ml-4"
+      )} />
     },
     {
       label: "Historique",
       href: "/history",
-      icon: <IconHistory className="text-neutral-700 dark:text-white h-6 w-6 flex-shrink-0" />
+      icon: <IconHistory className={cn(
+        "text-violet-500 dark:text-violet-400 h-6 w-6 flex-shrink-0",
+        !open && "-ml-4"
+      )} />
     },
     {
       label: "Room",
       href: "/room",
-      icon: <IconUsers className="text-neutral-700 dark:text-white h-6 w-6 flex-shrink-0" />
+      icon: <IconUsers className={cn(
+        "text-violet-500 dark:text-violet-400 h-6 w-6 flex-shrink-0",
+        !open && "-ml-4"
+      )} />
     }
   ];
 
@@ -73,12 +95,18 @@ export default function SidebarComponent() {
     {
       label: "Connexion",
       href: "/auth/login",
-      icon: <IconLogin className="text-neutral-700 dark:text-neutral-200 h-6 w-6 flex-shrink-0" />
+      icon: <IconLogin className={cn(
+        "text-violet-500 dark:text-violet-400 h-6 w-6 flex-shrink-0",
+        !open && "-ml-4"
+      )} />
     },
     {
-      label: "Inscription",
+      label: "Inscription", 
       href: "/auth/register",
-      icon: <IconUserPlus className="text-neutral-700 dark:text-neutral-200 h-6 w-6 flex-shrink-0" />
+      icon: <IconUserPlus className={cn(
+        "text-violet-500 dark:text-violet-400 h-6 w-6 flex-shrink-0",
+        !open && "-ml-4"
+      )} />
     }
   ];
 
@@ -86,16 +114,40 @@ export default function SidebarComponent() {
 
   return (
     <Sidebar open={open} setOpen={setOpen}>
-      <SidebarBody className="h-screen flex flex-col justify-between py-8">
+      <SidebarBody className="h-screen flex flex-col justify-between py-8 bg-gradient-to-b from-white to-violet-50 dark:from-zinc-900 dark:to-violet-950">
         <div className="flex flex-col">
-          {open ? <Logo /> : <LogoIcon />}
+          
+          {user && profile && (
+            <div className="h-20 flex justify-center mt-4">
+              <Link href="/profile" className="flex justify-center">
+                <motion.img
+                  src={profile?.profilePicture ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${profile.profilePicture}` : 'https://via.placeholder.com/40'}
+                  alt="Profile"
+                  className={cn(
+                    "rounded-full border-4 border-violet-400 hover:border-violet-600 shadow-lg transition-all duration-300",
+                    open ? "w-20 h-20" : "w-10 h-10"
+                  )}
+                  initial={false}
+                  animate={{
+                    width: open ? 80 : 40,
+                    height: open ? 80 : 40
+                  }}
+                  transition={{
+                    duration: 0.3,
+                    ease: "easeInOut"
+                  }}
+                />
+              </Link>
+            </div>
+          )}
 
-          <div className="flex flex-col gap-6 pl-4 mt-60">
+          <div className="flex flex-col gap-6 pl-4 mt-8">
             {links.map((link, idx) => (
               <SidebarLink 
                 key={idx} 
                 link={link}
-                className="text-lg"
+                className="text-lg font-medium hover:bg-violet-100 dark:hover:bg-violet-900 rounded-lg transition-colors duration-200 px-4 py-2"
+                onClick={link.label === "Accueil" ? clearSearch : undefined}
               />
             ))}
           </div>
@@ -107,64 +159,17 @@ export default function SidebarComponent() {
               link={{
                 label: "Déconnexion",
                 href: "/",
-                icon: <IconLogout className="text-red-500 h-6 w-6 flex-shrink-0" />
+                icon: <IconLogout className={cn(
+                  "text-red-500 h-6 w-6 flex-shrink-0",
+                  !open && "-ml-4"
+                )} />
               }}
-              className="text-red-500 hover:text-red-600 text-lg"
+              className="text-red-500 hover:bg-red-100 dark:hover:bg-red-900 rounded-lg transition-colors duration-200 px-4 py-2 text-lg font-medium"
               onClick={handleLogout}
             />
-          )}
-
-          {user && profile && (
-            <Link href="/profile" className="flex justify-center">
-              <motion.img
-                src={profile?.profilePicture ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${profile.profilePicture}` : 'https://via.placeholder.com/40'}
-                alt="Profile"
-                className={cn(
-                  "rounded-full border-2 border-transparent hover:border-violet-500 transition-all duration-300",
-                  open ? "w-20 h-20" : "w-10 h-10"
-                )}
-                initial={false}
-                animate={{
-                  width: open ? 80 : 40,
-                  height: open ? 80 : 40
-                }}
-                transition={{
-                  duration: 0.3,
-                  ease: "easeInOut"
-                }}
-              />
-            </Link>
           )}
         </div>
       </SidebarBody>
     </Sidebar>
   );
 }
-
-    const Logo = () => {
-      return (
-        <Link href="/" className="font-normal flex items-center text-sm text-black py-1 relative z-20">
-          <motion.span
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="font-medium text-black dark:text-white whitespace-pre pl-20"
-          >
-            MeloSphere
-          </motion.span>
-        </Link>
-      );
-    };
-
-    const LogoIcon = () => {
-      return (
-        <Link href="/" className="font-normal flex items-center text-sm text-black py-1 relative z-20">
-          <motion.span
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="font-medium text-black dark:text-white whitespace-pre pl-5"
-          >
-            M
-          </motion.span>
-        </Link>
-      );
-    };

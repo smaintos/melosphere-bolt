@@ -9,7 +9,7 @@ export default function ConditionalSidebar() {
   const pathname = usePathname();
 
   // Définir les routes où la Sidebar ne doit pas être affichée
-  const noSidebarRoutes = ['/auth/login', '/auth/register'];
+  const noSidebarRoutes = ['/auth/login', '/auth/register', '/auth/forgot-password', '/room'];
 
   // Vérifier si la route actuelle est dans la liste des routes sans Sidebar
   const shouldHideSidebar = noSidebarRoutes.some(route => pathname.startsWith(route));

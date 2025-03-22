@@ -140,38 +140,96 @@ export const updatePlaylist = async (token: string, playlistId: number, data: {
   return responseData;
 };
 
-export const downloadPlaylist = async (token: string, playlistId: number) => {
+export const downloadPlaylist = async (token: string, playlistId: number, onProgress?: (progress: number) => void) => {
   try {
-    const response = await fetch(`${API_URL}/api/download-playlist`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({ playlistId }),
-    });
+    // Simuler une progression avant de commencer le téléchargement réel
+    if (onProgress) {
+      // Simulation de progression
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += Math.random() * 10;
+        if (progress >= 95) {
+          progress = 95; // On garde 5% pour la fin du téléchargement
+          clearInterval(interval);
+        }
+        onProgress(Math.min(Math.floor(progress), 95));
+      }, 300);
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Erreur lors du téléchargement de la playlist');
+      // Nettoyer l'intervalle à la fin
+      const cleanup = () => clearInterval(interval);
+      
+      // Effectuer le téléchargement réel
+      const response = await fetch(`${API_URL}/api/download-playlist`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ playlistId }),
+      });
+
+      // Nettoyer l'intervalle
+      cleanup();
+      
+      if (!response.ok) {
+        // Conserver le message personnalisé qui correspond à notre interface
+        throw new Error('Il y\'a un probleme avec votre fichier');
+      }
+      
+      // Terminer la progression à 100%
+      onProgress(100);
+
+      // Récupérer le nom du fichier depuis les headers
+      const contentDisposition = response.headers.get('content-disposition');
+      const filenameMatch = contentDisposition && contentDisposition.match(/filename="(.+)"/);
+      const filename = filenameMatch ? filenameMatch[1] : 'playlist.zip';
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } else {
+      // Version classique sans progression
+      const response = await fetch(`${API_URL}/api/download-playlist`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ playlistId }),
+      });
+
+      if (!response.ok) {
+        // Conserver le message personnalisé qui correspond à notre interface
+        throw new Error('Il y\'a un probleme avec votre fichier');
+      }
+
+      // Récupérer le nom du fichier depuis les headers
+      const contentDisposition = response.headers.get('content-disposition');
+      const filenameMatch = contentDisposition && contentDisposition.match(/filename="(.+)"/);
+      const filename = filenameMatch ? filenameMatch[1] : 'playlist.zip';
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
     }
-
-    // Récupérer le nom du fichier depuis les headers
-    const contentDisposition = response.headers.get('content-disposition');
-    const filenameMatch = contentDisposition && contentDisposition.match(/filename="(.+)"/);
-    const filename = filenameMatch ? filenameMatch[1] : 'playlist.zip';
-
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(url);
   } catch (error: any) {
     console.error('[Download-Playlist] Erreur:', error);
+    // Si l'erreur n'a pas de message personnalisé, on en définit un par défaut
+    if (error.message !== 'Il y\'a un probleme avec votre fichier') {
+      throw new Error('Il y\'a un probleme avec votre fichier');
+    }
     throw error;
   }
 };
@@ -328,8 +386,7 @@ export const handleDownloadAndSend = async (videoUrl: string, token: string) => 
     });
 
     if (!downloadResponse.ok) {
-      const errorData = await downloadResponse.json();
-      throw new Error(errorData.message || 'Erreur lors du téléchargement');
+      throw new Error('Il y\'a un probleme avec votre fichier');
     }
 
     const data = await downloadResponse.json();
@@ -342,7 +399,7 @@ export const handleDownloadAndSend = async (videoUrl: string, token: string) => 
     });
 
     if (!fileResponse.ok) {
-      throw new Error('Erreur lors de la récupération du fichier');
+      throw new Error('Il y\'a un probleme avec votre fichier');
     }
 
     const blob = await fileResponse.blob();
@@ -360,8 +417,11 @@ export const handleDownloadAndSend = async (videoUrl: string, token: string) => 
       viewCount: data.viewCount || 0,
       likeCount: data.likeCount || 0
     };
-  } catch (error) {
-    console.error('Erreur:', error);
+  } catch (error: any) {
+    console.error('[Download-Send] Erreur:', error);
+    if (error.message !== 'Il y\'a un probleme avec votre fichier') {
+      throw new Error('Il y\'a un probleme avec votre fichier');
+    }
     throw error;
   }
 };

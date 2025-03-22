@@ -116,6 +116,14 @@ export default function AddPlaylist({ showCheckboxes = false, videoUrl, onPlayli
     }
   };
 
+  const handlePlaylistClick = (event: React.MouseEvent) => {
+    // Ne pas naviguer si on est en mode sélection ou si on clique sur la checkbox
+    if (showCheckboxes || (event.target as HTMLElement).closest('.checkbox-container')) {
+      return;
+    }
+    router.push('/playlists');
+  };
+
   if (isLoading) {
     return (
       <div className="bg-zinc-900/90 h-[600px] sm:h-[850px] md:h-[780px] rounded-xl p-8 backdrop-blur-sm border border-violet-500/20">
@@ -130,7 +138,7 @@ export default function AddPlaylist({ showCheckboxes = false, videoUrl, onPlayli
       {!hasPlaylists ? (
         <div className="flex flex-col items-center justify-center h-full space-y-6">
           <h2 className="text-2xl text-zinc-400/60 text-lg text-center">
-            Vous n'avez toujours pas de playlist sur melosphere ?!
+            Vous n&apos;avez toujours pas de playlist sur melosphere ?!
           </h2>
           <Button 
             onClick={() => router.push('/playlists')}
@@ -147,14 +155,17 @@ export default function AddPlaylist({ showCheckboxes = false, videoUrl, onPlayli
             {playlists.map((playlist) => (
               <div 
                 key={playlist.id} 
-                className="flex items-center gap-4 p-4 bg-zinc-800 rounded-lg relative border border-zinc-700/50 hover:border-violet-500/50 hover:shadow-[0_0_57px_rgba(139,92,246,0.2)] transition-all duration-300"
+                className={`flex items-center gap-4 p-4 bg-zinc-800 rounded-lg relative border border-zinc-700/50 hover:border-violet-500/50 hover:shadow-[0_0_57px_rgba(139,92,246,0.2)] transition-all duration-300 ${!showCheckboxes ? 'cursor-pointer' : ''}`}
+                onClick={(e) => handlePlaylistClick(e)}
               >
                 {showCheckboxes && (
-                  <Checkbox
-                    checked={selectedPlaylistId === playlist.id}
-                    onCheckedChange={() => setSelectedPlaylistId(playlist.id)}
-                    className="border-violet-500/20 data-[state=checked]:bg-violet-500"
-                  />
+                  <div className="checkbox-container">
+                    <Checkbox
+                      checked={selectedPlaylistId === playlist.id}
+                      onCheckedChange={() => setSelectedPlaylistId(playlist.id)}
+                      className="border-violet-500/20 data-[state=checked]:bg-violet-500"
+                    />
+                  </div>
                 )}
   
                 <div className="flex-1">
