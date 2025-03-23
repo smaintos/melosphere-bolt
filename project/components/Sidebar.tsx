@@ -132,7 +132,7 @@ export default function SidebarComponent() {
             <div className="h-32 flex justify-center relative">
               <Link href="/profile" className="flex justify-center">
                 <motion.img
-                  src={profile?.profilePicture ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${profile.profilePicture}` : 'https://via.placeholder.com/40'}
+                  src={profile?.profilePicture ? `${process.env.NEXT_PUBLIC_API_URL}${profile.profilePicture}` : 'https://via.placeholder.com/40'}
                   alt="Profile"
                   className={cn(
                     "rounded-full border-4 border-violet-400 hover:border-violet-600 shadow-lg transition-all duration-300 z-10",
