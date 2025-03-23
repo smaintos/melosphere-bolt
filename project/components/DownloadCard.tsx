@@ -134,10 +134,12 @@ export function DownloadCard({ authLoading, onAddToPlaylist }: DownloadCardProps
       {!error && videoInfo && (
         <div className="mt-6 space-y-6">
           <div className="w-full h-[500px] rounded-lg overflow-hidden bg-zinc-800/50">
-            <img 
+            <Image
               src={videoInfo.thumbnail}
               alt={videoInfo.title}
-              className="w-full h-full object-contain" 
+              width={800}
+              height={500}
+              className="w-full h-full object-contain"
             />
           </div>
           <div className="space-y-3">

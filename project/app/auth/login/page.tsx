@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import useAuth from '@/app/hooks/useAuth';
 import { loginUser } from '@/lib/api';
+import { Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -112,6 +113,9 @@ export default function LoginPage() {
           height: 100%;
           background-color: white;
           z-index: -1;
+          @media (max-width: 768px) {
+            width: 100%;
+          }
         }
         
         .split-background::after {
@@ -123,11 +127,14 @@ export default function LoginPage() {
           height: 100%;
           background-color: black;
           z-index: -1;
+          @media (max-width: 768px) {
+            display: none;
+          }
         }
       `}</style>
       
-      <div className="w-3/5 flex items-center justify-center">
-        <div className="w-full max-w-lg p-10">
+      <div className="w-full md:w-3/5 flex items-center justify-center">
+        <div className="w-full max-w-lg p-4 md:p-10">
           {error && (
             <div className="mb-6 p-3 bg-red-50 border border-red-300 rounded-md">
               <p className="text-red-500 flex items-center">
@@ -142,7 +149,7 @@ export default function LoginPage() {
           )}
           
           <div className="flex items-center gap-4 mb-8">
-            <h1 className="text-3xl font-bold text-zinc-800 ml-24">Connexion</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-zinc-800 ml-4 md:ml-24">Connexion</h1>
             <Image
               src="https://img.icons8.com/dotty/80/mesh.png"
               alt="mesh"
@@ -151,7 +158,7 @@ export default function LoginPage() {
             />
           </div>
           
-          <form className="space-y-6" onSubmit={handleLogin}>
+          <form className="space-y-4 md:space-y-6" onSubmit={handleLogin}>
             <div className="space-y-2">
               <Input
                 type="email"
@@ -172,8 +179,19 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full bg-violet-600 hover:bg-violet-700 text-white py-3">
-              Se connecter
+            <Button 
+              type="submit" 
+              className="w-full bg-violet-600 hover:bg-violet-700 text-white py-3"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Connexion...
+                </div>
+              ) : (
+                "Se connecter"
+              )}
             </Button>
           </form>
 
@@ -185,8 +203,8 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Partie droite - Animation */}
-      <div className="w-2/5 flex items-center justify-center">
+      {/* Partie droite - Animation - visible uniquement sur desktop */}
+      <div className="hidden md:flex md:w-2/5 items-center justify-center">
         <h2 className="text-7xl font-extrabold text-white tracking-wider">
           {displayedText}
           <span className="animate-pulse">|</span>

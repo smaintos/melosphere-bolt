@@ -162,9 +162,9 @@ export default function PlaylistsPage() {
       <div className="flex-1 p-8">
         <h1 className="text-3xl font-bold mb-8 text-white">Playlists</h1>
   
-        <div className="flex gap-8">
+        <div className="flex flex-col lg:flex-row gap-8">
           {/* Formulaire de création */}
-          <div className="w-96">
+          <div className="w-full lg:w-96">
             <Card className="p-6 bg-zinc-900/50 border-violet-500/20 sticky top-8">
               <h2 className="text-xl font-semibold mb-4">Créer une playlist</h2>
               <div className="space-y-4">
@@ -233,7 +233,7 @@ export default function PlaylistsPage() {
           {/* Container des playlists */}
           <div className="flex-1">
             <ScrollArea className="h-[calc(100vh-200px)] pr-4 rounded-lg bg-zinc-900/50 border border-violet-500/20">
-              <div className="grid grid-cols-3 gap-6 p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
                 {playlists.length === 0 ? (
                   <p className="text-zinc-400">Aucune playlist créée</p>
                 ) : (

@@ -148,7 +148,7 @@ export default function ProfilePage() {
         </div>
 
         {/* En-tête avec photo et infos de base */}
-        <div className="w-full bg-gradient-to-r from-violet-900/30 to-indigo-900/30 py-20 px-4">
+        <div className="container pt-20 px-4">
           <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-8 md:gap-16">
             {/* Photo de profil */}
             <div className="relative group">
@@ -178,9 +178,11 @@ export default function ProfilePage() {
                     {profilePicture ? (
                       <div className="flex flex-col items-center space-y-4">
                         <div className="relative w-40 h-40 mx-auto rounded-full overflow-hidden border-2 border-violet-500/50 shadow-lg">
-                          <img 
-                            src={URL.createObjectURL(profilePicture)} 
-                            alt="Aperçu" 
+                          <img
+                            src={URL.createObjectURL(profilePicture)}
+                            alt="Aperçu"
+                            width={160}
+                            height={160}
                             className="w-full h-full object-cover"
                           />
                         </div>
@@ -288,8 +290,52 @@ export default function ProfilePage() {
           
           {/* Navigation et sections */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Barre de navigation latérale */}
-            <div className="col-span-1">
+            {/* Barre de navigation latérale - version mobile */}
+            <div className="col-span-1 lg:hidden">
+              <div className="flex overflow-x-auto space-x-2 py-2 mb-4 scrollbar-hide">
+                <Button 
+                  variant={activeTab === 'profile' ? 'default' : 'outline'}
+                  className={`flex items-center gap-2 ${activeTab === 'profile' ? 'bg-violet-600' : 'bg-zinc-800/50 border-violet-500/20'}`}
+                  onClick={() => setActiveTab('profile')}
+                >
+                  <User className="w-4 h-4" />
+                  <span>Informations</span>
+                </Button>
+                
+                <Button 
+                  variant={activeTab === 'security' ? 'default' : 'outline'}
+                  className={`flex items-center gap-2 ${activeTab === 'security' ? 'bg-violet-600' : 'bg-zinc-800/50 border-violet-500/20'}`}
+                  onClick={() => setActiveTab('security')}
+                >
+                  <Shield className="w-4 h-4" />
+                  <span>Sécurité</span>
+                </Button>
+                
+                <Button 
+                  variant={activeTab === 'advanced' ? 'default' : 'outline'}
+                  className={`flex items-center gap-2 ${activeTab === 'advanced' ? 'bg-violet-600' : 'bg-zinc-800/50 border-violet-500/20'}`}
+                  onClick={() => setActiveTab('advanced')}
+                >
+                  <Settings className="w-4 h-4" />
+                  <span>Paramètres</span>
+                </Button>
+                
+                <Button 
+                  variant="outline"
+                  className="flex items-center gap-2 bg-red-900/20 border-red-500/20"
+                  onClick={() => {
+                    logout();
+                    router.push('/auth/login');
+                  }}
+                >
+                  <IconLogout className="w-4 h-4 text-red-400" />
+                  <span>Déconnexion</span>
+                </Button>
+              </div>
+            </div>
+            
+            {/* Barre de navigation latérale - version desktop */}
+            <div className="col-span-1 hidden lg:block">
               <Card className="bg-zinc-900/50 border-violet-500/20 overflow-hidden shadow-lg shadow-violet-500/5">
                 <div className="flex flex-col">
                   <button 

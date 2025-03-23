@@ -161,7 +161,7 @@ export default function AccueilPage() {
                     </div>
                   </div>
                 </div>
-                <Image
+                <Image  
                   src="/demo2.png"
                   alt="Gestion des playlists Melosphere"
                   width={720}

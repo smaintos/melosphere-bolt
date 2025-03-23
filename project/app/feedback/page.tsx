@@ -100,29 +100,29 @@ export default function FeedbackPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-2xl mx-auto px-4 z-10"
+        className="w-full max-w-2xl mx-auto px-4 py-4 md:py-0 z-10"
       >
-        <Card className="p-6 md:p-8 backdrop-blur-sm bg-zinc-900/80 border border-violet-500/30 shadow-xl shadow-violet-900/20 rounded-xl max-h-[calc(100vh-40px)] overflow-visible">
+        <Card className="p-4 md:p-8 backdrop-blur-sm bg-zinc-900/80 border border-violet-500/30 shadow-xl shadow-violet-900/20 rounded-xl max-h-[calc(100vh-30px)] md:max-h-[calc(100vh-40px)] overflow-y-auto md:overflow-visible">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.4 }}
           >
-            <h1 className="text-3xl font-bold text-center mb-3 bg-gradient-to-r from-violet-400 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-2xl md:text-3xl font-bold text-center mb-2 md:mb-3 bg-gradient-to-r from-violet-400 to-purple-600 bg-clip-text text-transparent">
               Votre avis nous intéresse
             </h1>
             
             <div className="flex items-center justify-center mb-2">
-              <div className="h-px w-12 bg-violet-500/30"></div>
-              <IconUsers className="h-5 w-5 mx-2 text-violet-400" />
-              <div className="h-px w-12 bg-violet-500/30"></div>
+              <div className="h-px w-10 md:w-12 bg-violet-500/30"></div>
+              <IconUsers className="h-4 w-4 md:h-5 md:w-5 mx-2 text-violet-400" />
+              <div className="h-px w-10 md:w-12 bg-violet-500/30"></div>
             </div>
             
-            <p className="text-zinc-300 text-center mb-2">
+            <p className="text-zinc-300 text-center text-sm md:text-base mb-1 md:mb-2">
               Melosphere est un projet communautaire
             </p>
             
-            <p className="text-zinc-400 text-sm text-center mb-6">
+            <p className="text-zinc-400 text-xs md:text-sm text-center mb-4 md:mb-6">
               Chaque retour est précieux pour façonner ensemble la plateforme idéale pour tous les passionnés de musique. 
               Ce n&apos;est pas seulement notre projet, c&apos;est le <span className="text-violet-400 font-medium">vôtre</span>.
             </p>
@@ -136,13 +136,13 @@ export default function FeedbackPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                className="py-12 flex flex-col items-center gap-3"
+                className="py-8 md:py-12 flex flex-col items-center gap-3"
               >
-                <div className="w-20 h-20 rounded-full bg-violet-500/20 flex items-center justify-center mb-2">
-                  <IconCheck size={32} className="text-violet-400" />
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-violet-500/20 flex items-center justify-center mb-2">
+                  <IconCheck size={28} className="text-violet-400" />
                 </div>
-                <h2 className="text-xl font-bold text-violet-400">Merci pour votre retour !</h2>
-                <p className="text-zinc-400 text-center max-w-xs">
+                <h2 className="text-lg md:text-xl font-bold text-violet-400">Merci pour votre retour !</h2>
+                <p className="text-zinc-400 text-center text-sm md:text-base max-w-xs">
                   Nous avons bien reçu votre message et nous vous répondrons dans les meilleurs délais.
                 </p>
               </motion.div>
@@ -152,22 +152,22 @@ export default function FeedbackPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="max-h-[calc(100vh-220px)] overflow-hidden"
+                className="max-h-[calc(100vh-180px)] md:max-h-[calc(100vh-220px)] overflow-y-auto overflow-x-hidden"
               >
                 {error && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mb-4 p-3 bg-red-900/30 border border-red-500/30 rounded-md"
+                    className="mb-3 md:mb-4 p-3 bg-red-900/30 border border-red-500/30 rounded-md"
                   >
-                    <p className="text-red-400 flex items-center text-sm">
+                    <p className="text-red-400 flex items-center text-xs md:text-sm">
                       <IconAlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
                       {error}
                     </p>
                   </motion.div>
                 )}
 
-                <div className="relative z-10 flex justify-center gap-2 mb-5 py-2">
+                <div className="relative z-10 flex justify-center flex-wrap md:flex-nowrap gap-2 mb-4 md:mb-5 py-1 md:py-2">
                   {[
                     { id: 'bug', label: 'Bug', icon: <IconBug className={`h-3.5 w-3.5 ${feedbackType === 'bug' ? 'text-white' : 'text-red-400'}`} />, color: 'from-red-500 to-pink-600', bgActive: 'bg-gradient-to-r from-red-500 to-pink-600', bgHover: 'bg-red-900/30' },
                     { id: 'feature', label: 'Idée', icon: <IconBulb className={`h-3.5 w-3.5 ${feedbackType === 'feature' ? 'text-white' : 'text-yellow-400'}`} />, color: 'from-yellow-500 to-amber-600', bgActive: 'bg-gradient-to-r from-yellow-500 to-amber-600', bgHover: 'bg-yellow-900/30' },
@@ -177,7 +177,7 @@ export default function FeedbackPage() {
                       key={item.id}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      className="flex-1 max-w-[110px]"
+                      className="flex-1"
                     >
                       <Button 
                         variant={feedbackType === item.id ? 'default' : 'outline'}
@@ -214,7 +214,7 @@ export default function FeedbackPage() {
 
                 <motion.form 
                   onSubmit={handleSubmit} 
-                  className="space-y-6"
+                  className="space-y-4 md:space-y-6"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3, duration: 0.4 }}

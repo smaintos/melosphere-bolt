@@ -137,7 +137,7 @@ export default function AddPlaylist({ showCheckboxes = false, videoUrl, onPlayli
       <h1 className="text-2xl text-white mb-6">Playlists</h1>
       {!hasPlaylists ? (
         <div className="flex flex-col items-center justify-center h-full space-y-6">
-          <h2 className="text-2xl text-zinc-400/60 text-lg text-center">
+          <h2 className="text-zinc-400/60 text-lg text-center">
             Vous n&apos;avez toujours pas de playlist sur melosphere ?!
           </h2>
           <Button 
