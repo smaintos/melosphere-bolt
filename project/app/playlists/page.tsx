@@ -250,8 +250,10 @@ export default function PlaylistsPage() {
                               {playlist.isPublic ? "Public" : "Privé"}
                             </Badge>
                           </div>
-                          <p className="text-zinc-400 text-sm mb-2">{playlist.description}</p>
-                          <ScrollArea className="h-[150px]">
+                          <div className="h-[50px] mb-2 overflow-hidden">
+                            <p className="text-zinc-400 text-sm line-clamp-2">{playlist.description}</p>
+                          </div>
+                          <ScrollArea className="h-[120px]">
                             <div className="space-y-2">
                               {playlist.links.map((link, index) => (
                                 <p
@@ -265,7 +267,7 @@ export default function PlaylistsPage() {
                           </ScrollArea>
                         </div>
                         
-                        <div className="flex justify-center gap-2 pt-4 border-t border-zinc-700/50">
+                        <div className="flex justify-center gap-2 pt-4 mt-auto border-t border-zinc-700/50">
                           <Button
                             variant="ghost"
                             size="icon"
