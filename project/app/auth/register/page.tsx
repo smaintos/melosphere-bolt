@@ -8,11 +8,14 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import useAuth from '@/app/hooks/useAuth';
 import { registerUser } from '@/lib/api';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function RegisterPage() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [secretQuestion, setSecretQuestion] = useState('');
+  const [secretAnswer, setSecretAnswer] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [displayedText, setDisplayedText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -39,7 +42,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
     
-    if (!username || !email || !password) {
+    if (!username || !email || !password || !secretQuestion || !secretAnswer) {
       setError("Veuillez remplir tous les champs");
       return;
     }
@@ -56,7 +59,7 @@ export default function RegisterPage() {
     
     try {
       setIsLoading(true);
-      const data = await registerUser(username, email, password);
+      const data = await registerUser(username, email, password, secretQuestion, secretAnswer);
       login(data.token);
       
       // Délai intentionnel pour voir le loader
@@ -193,6 +196,33 @@ export default function RegisterPage() {
                 required
               />
             </div>
+            
+            <div className="space-y-2">
+              <Select value={secretQuestion} onValueChange={setSecretQuestion} required>
+                <SelectTrigger className="bg-white border border-zinc-200 text-zinc-800">
+                  <SelectValue placeholder="Choisir une question secrète" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pet">Quel est le nom de votre premier animal de compagnie ?</SelectItem>
+                  <SelectItem value="city">Dans quelle ville êtes-vous né(e) ?</SelectItem>
+                  <SelectItem value="school">Quel est le nom de votre école primaire ?</SelectItem>
+                  <SelectItem value="food">Quel est votre plat préféré ?</SelectItem>
+                  <SelectItem value="color">Quelle est votre couleur préférée ?</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Input
+                type="text"
+                placeholder="Réponse à la question secrète"
+                value={secretAnswer}
+                onChange={(e) => setSecretAnswer(e.target.value)}
+                className="bg-white border border-zinc-200 text-zinc-800"
+                required
+              />
+            </div>
+            
             <Button type="submit" className="w-full bg-violet-600 hover:bg-violet-700 text-white py-3">
               S&apos;inscrire
             </Button>

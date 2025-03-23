@@ -5,6 +5,9 @@ import { useEffect, useState } from 'react';
 import useAuth from '../hooks/useAuth';
 import { Card } from "@/components/ui/card";
 import { Construction } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { IconArrowLeft } from "@tabler/icons-react";
+import Link from "next/link";
 
 export default function RoomPage() {
   const { user } = useAuth();
@@ -51,6 +54,19 @@ export default function RoomPage() {
 
   return (
     <ProtectedRoute>
+      {/* Bouton retour */}
+      <div className="fixed top-4 left-4 z-50">
+        <Link href="/">
+          <Button 
+            variant="outline" 
+            className="bg-zinc-900/70 backdrop-blur-sm hover:bg-zinc-800 border border-violet-500/30 text-white"
+          >
+            <IconArrowLeft className="h-4 w-4 mr-2" />
+            Retour
+          </Button>
+        </Link>
+      </div>
+    
       <div className="flex-1 p-8 flex flex-col items-center min-h-screen pt-24">
         <div className="text-center mb-16">
         </div>
@@ -83,15 +99,6 @@ export default function RoomPage() {
                 Cette fonctionnalité sera disponible dans une prochaine mise à jour.
                 Restez à l&apos;écoute !
               </p>
-              
-              <div className="mt-8">
-                <a 
-                  href="/"
-                  className="inline-block px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg transition-colors"
-                >
-                  Retour sur le site
-                </a>
-              </div>
             </div>
           </div>
         </Card>

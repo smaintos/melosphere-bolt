@@ -13,11 +13,25 @@ interface SearchPlaylist {
   };
 }
 
-export const registerUser = async (username: string, email: string, password: string) => {
+// Définition du type User
+export type User = {
+  id: number;
+  username: string;
+  email: string;
+  profilePicture?: string;
+};
+
+export const registerUser = async (
+  username: string, 
+  email: string, 
+  password: string, 
+  secretQuestion: string, 
+  secretAnswer: string
+) => {
   const response = await fetch(`${API_URL}/api/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, email, password }),
+    body: JSON.stringify({ username, email, password, secretQuestion, secretAnswer }),
   });
 
   const data = await response.json();
@@ -299,6 +313,49 @@ export const getUserProfile = async (token: string) => {
   return data;
 };
 
+export const getUserStats = async (token: string) => {
+  try {
+    // Récupérer l'historique pour compter les téléchargements
+    const historyResponse = await fetch(`${API_URL}/api/history`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!historyResponse.ok) {
+      throw new Error('Erreur lors de la récupération de l\'historique');
+    }
+
+    const history = await historyResponse.json();
+    
+    // Récupérer les détails du profil pour la date de création
+    const profileResponse = await fetch(`${API_URL}/api/profile-stats`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!profileResponse.ok) {
+      throw new Error('Erreur lors de la récupération des statistiques du profil');
+    }
+
+    const profileStats = await profileResponse.json();
+    
+    return {
+      downloadsCount: history.length,
+      createdAt: profileStats.createdAt,
+    };
+  } catch (error) {
+    console.error('Erreur lors de la récupération des statistiques:', error);
+    return {
+      downloadsCount: 0,
+      createdAt: null,
+    };
+  }
+};
+
 export const updateUserEmail = async (token: string, email: string) => {
   const response = await fetch(`${API_URL}/api/update-email`, {
     method: 'PUT',
@@ -424,4 +481,82 @@ export const handleDownloadAndSend = async (videoUrl: string, token: string) => 
     }
     throw error;
   }
+};
+
+export async function forgotPassword(email: string): Promise<{ message: string }> {
+  const response = await fetch(`${API_URL}/api/forgot-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Une erreur est survenue lors de la demande de réinitialisation du mot de passe');
+  }
+
+  return response.json();
+}
+
+export async function sendFeedback(email: string, type: string, message: string): Promise<{ success: boolean; message: string }> {
+  try {
+    console.log('Envoi de feedback:', { email, type, messageLength: message.length });
+    
+    const response = await fetch(`${API_URL}/api/send-feedback`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, type, message }),
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      console.error('Erreur lors de l\'envoi du feedback:', data);
+      throw new Error(data.message || 'Une erreur est survenue lors de l\'envoi du feedback');
+    }
+
+    console.log('Feedback envoyé avec succès:', data);
+    return data;
+  } catch (error: any) {
+    console.error('Exception lors de l\'envoi du feedback:', error);
+    throw new Error(error.message || 'Une erreur est survenue lors de l\'envoi du feedback');
+  }
+}
+
+/**
+ * Fonction pour récupérer la question secrète d'un utilisateur à partir de son email
+ */
+export const getSecretQuestion = async (email: string) => {
+  const response = await fetch(`${API_URL}/api/get-secret-question`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Adresse email non trouvée');
+  }
+  return data;
+};
+
+/**
+ * Fonction pour réinitialiser le mot de passe d'un utilisateur après vérification de sa question secrète
+ */
+export const resetPassword = async (userId: number, secretAnswer: string) => {
+  const response = await fetch(`${API_URL}/api/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, secretAnswer }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Réponse incorrecte à la question secrète');
+  }
+  return data;
 };
