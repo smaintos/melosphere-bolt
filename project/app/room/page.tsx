@@ -30,7 +30,6 @@ export default function RoomPage() {
     return () => clearInterval(intervalId);
   }, []);
 
-  // Simuler un temps de chargement lors de l'accès à la page
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
