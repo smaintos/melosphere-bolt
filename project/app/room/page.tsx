@@ -38,7 +38,7 @@ export default function RoomPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Affichage du loader en plein écran pendant le chargement
+
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
