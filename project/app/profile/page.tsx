@@ -20,6 +20,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useRouter } from 'next/navigation';
+import { getFullImageUrl } from '@/lib/utils';
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
@@ -154,7 +155,7 @@ export default function ProfilePage() {
             <div className="relative group">
               <div className="w-36 h-36 md:w-44 md:h-44 rounded-full overflow-hidden border-4 border-violet-500/50 shadow-lg shadow-violet-500/20">
                 <img
-                  src={profile?.profilePicture ? `${API_URL}${profile.profilePicture}` : 'https://via.placeholder.com/150'}
+                  src={getFullImageUrl(profile?.profilePicture) || 'https://via.placeholder.com/150'}
                   alt="Profile"
                   className="w-full h-full object-cover"
                 />

@@ -20,6 +20,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { getUserProfile } from "@/lib/api";
 import { eventBus, AppEvents } from '@/lib/events';
+import { getFullImageUrl } from '@/lib/utils';
 
 export default function SidebarComponent() {
   const router = useRouter();
@@ -132,7 +133,7 @@ export default function SidebarComponent() {
             <div className="h-32 flex justify-center relative">
               <Link href="/profile" className="flex justify-center">
                 <motion.img
-                  src={profile?.profilePicture ? `${process.env.NEXT_PUBLIC_API_URL}${profile.profilePicture}` : 'https://via.placeholder.com/40'}
+                  src={getFullImageUrl(profile?.profilePicture) || 'https://via.placeholder.com/40'}
                   alt="Profile"
                   className={cn(
                     "rounded-full border-4 border-violet-400 hover:border-violet-600 shadow-lg transition-all duration-300 z-10",

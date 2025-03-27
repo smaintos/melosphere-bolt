@@ -1,6 +1,6 @@
 // lib/api.ts
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://87.106.162.205:5001';
 
 interface SearchPlaylist {
   id: number;
@@ -559,4 +559,76 @@ export const resetPassword = async (userId: number, secretAnswer: string) => {
     throw new Error(data.message || 'Réponse incorrecte à la question secrète');
   }
   return data;
+};
+
+// Fonction générique pour les requêtes API
+async function fetchApi(endpoint: string, options: RequestInit = {}) {
+  const token = localStorage.getItem('token');
+  
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...options.headers
+  };
+  
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Une erreur est survenue');
+  }
+  
+  return response.json();
+}
+
+// API pour les Rooms
+export const roomsApi = {
+  // Récupérer toutes les rooms actives
+  getAllRooms: () => fetchApi('/api/rooms'),
+  
+  // Récupérer les détails d'une room
+  getRoomById: (roomId: string) => fetchApi(`/api/rooms/${roomId}`),
+  
+  // Créer une nouvelle room
+  createRoom: (name: string) => fetchApi('/api/rooms', {
+    method: 'POST',
+    body: JSON.stringify({ name })
+  }),
+  
+  // Rejoindre une room
+  joinRoom: (roomId: string) => fetchApi(`/api/rooms/${roomId}/join`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  }),
+  
+  // Quitter une room
+  leaveRoom: (roomId: string) => fetchApi(`/api/rooms/${roomId}/leave`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  }),
+  
+  // Fermer une room
+  closeRoom: (roomId: string) => fetchApi(`/api/rooms/${roomId}`, {
+    method: 'DELETE',
+    body: JSON.stringify({})
+  }),
+  
+  // Envoyer un message dans une room
+  sendMessage: (roomId: string, content: string) => fetchApi(`/api/rooms/${roomId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ content })
+  }),
+  
+  // Télécharger et jouer une vidéo YouTube
+  playYoutubeVideo: (roomId: string, videoUrl: string) => fetchApi(`/api/rooms/${roomId}/play`, {
+    method: 'POST',
+    body: JSON.stringify({ videoUrl })
+  })
+};
+
+export default {
+  rooms: roomsApi
 };
