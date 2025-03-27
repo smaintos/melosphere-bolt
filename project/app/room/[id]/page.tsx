@@ -84,6 +84,10 @@ export default function RoomDetailPage() {
     isActive: false
   });
 
+  // Ajouter un état pour suivre qui est en train d'écrire
+  const [usersTyping, setUsersTyping] = useState<{id: number, username: string}[]>([]);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Charger les détails de la room
   useEffect(() => {
     const fetchRoomDetails = async () => {
@@ -442,7 +446,25 @@ export default function RoomDetailPage() {
         }
       }, 10000); // Synchroniser toutes les 10 secondes
       
-      // Nettoyage à la déconnexion
+      // Ajouter les écouteurs pour le "typing indicator"
+      socket.socket?.on('user-typing', ({userId, username}: {userId: number, username: string}) => {
+        // Ne pas ajouter notre propre indication de frappe
+        if (userId === user.id) return;
+        
+        setUsersTyping(prev => {
+          // Vérifier si cet utilisateur est déjà dans la liste
+          const alreadyTyping = prev.some(u => u.id === userId);
+          if (alreadyTyping) return prev;
+          
+          return [...prev, {id: userId, username}];
+        });
+      });
+      
+      socket.socket?.on('user-stop-typing', (userId: number) => {
+        setUsersTyping(prev => prev.filter(u => u.id !== userId));
+      });
+      
+      // Nettoyer à la déconnexion
       return () => {
         console.log("Déconnexion de la room Socket.IO:", roomId);
         socket.socket?.emit('leave-room', roomId, user.id);
@@ -457,6 +479,8 @@ export default function RoomDetailPage() {
         socket.socket?.off('song-error');
         socket.socket?.off('room-closed');
         socket.socket?.off('playback-sync');
+        socket.socket?.off('user-typing');
+        socket.socket?.off('user-stop-typing');
         if (syncTimerRef.current) {
           clearInterval(syncTimerRef.current);
         }
@@ -810,6 +834,41 @@ export default function RoomDetailPage() {
     };
   }, [manualTimer.isActive]);
 
+  // Gérer le changement du message input pour signaler quand l'utilisateur tape
+  useEffect(() => {
+    // Seulement si l'utilisateur a commencé à taper quelque chose
+    if (messageInput.trim().length > 0 && socket && socket.isConnected && user && roomId) {
+      // Émettre l'événement "user-typing"
+      socket.socket?.emit('user-typing', roomId, user.id, user.username || 'Utilisateur');
+      
+      // Nettoyer le timer précédent si existant
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Définir un délai après lequel nous considérons que l'utilisateur a arrêté de taper
+      typingTimeoutRef.current = setTimeout(() => {
+        socket.socket?.emit('user-stop-typing', roomId, user.id);
+      }, 2000); // 2 secondes d'inactivité = arrêt de frappe
+    } else if (messageInput.trim().length === 0 && socket && socket.isConnected && user && roomId) {
+      // Si l'utilisateur efface tout, signaler immédiatement l'arrêt de frappe
+      socket.socket?.emit('user-stop-typing', roomId, user.id);
+      
+      // Nettoyer le timer
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+    }
+    
+    // Nettoyer le timer lors du démontage
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, [messageInput, socket, user, roomId]);
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
@@ -1092,6 +1151,33 @@ export default function RoomDetailPage() {
                   </div>
                 )}
               </ScrollArea>
+              
+              {/* Indicateur de frappe */}
+              {usersTyping.length > 0 && (
+                <div className="px-3 py-2 border-t border-zinc-800 text-xs text-zinc-400 italic">
+                  {usersTyping.length === 1 ? (
+                    <div className="flex items-center">
+                      <span className="mr-1">{usersTyping[0].username} est en train d'écrire</span>
+                      <span className="flex">
+                        <span className="animate-bounce">.</span>
+                        <span className="animate-bounce delay-100">.</span>
+                        <span className="animate-bounce delay-200">.</span>
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <span className="mr-1">
+                        {usersTyping.map(u => u.username).join(', ')} sont en train d'écrire
+                      </span>
+                      <span className="flex">
+                        <span className="animate-bounce">.</span>
+                        <span className="animate-bounce delay-100">.</span>
+                        <span className="animate-bounce delay-200">.</span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
               
               <div className="p-3 border-t border-zinc-800">
                 <div className="flex gap-2">
