@@ -23,10 +23,12 @@ import {
   IconSend,
   IconMusic,
   IconPlayerPlay,
+  IconPlayerPause,
   IconBrandYoutube,
   IconUsers,
   IconDoorExit,
-  IconX
+  IconX,
+  IconVolume
 } from '@tabler/icons-react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -42,6 +44,10 @@ export default function RoomDetailPage() {
   const { toast } = useToast();
   const audioRef = useRef<HTMLAudioElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const syncTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const songStartTimeRef = useRef<number | null>(null);
+  const playButtonRef = useRef<HTMLButtonElement>(null);
+  const hasAutoPlayedRef = useRef<boolean>(false);
   
   const [room, setRoom] = useState<Room | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -58,6 +64,25 @@ export default function RoomDetailPage() {
   
   // Variable pour suivre si nous sommes dans la période de grâce après création
   const [suppressNotifications, setSuppressNotifications] = useState(false);
+
+  const [audioState, setAudioState] = useState<{
+    currentTime: number;
+    duration: number;
+    isPlaying: boolean;
+    volume: number;
+  }>({
+    currentTime: 0,
+    duration: 0,
+    isPlaying: false,
+    volume: 0.8,
+  });
+
+  // Ajouter une state pour la progression manuelle du timer
+  const [manualTimer, setManualTimer] = useState({
+    duration: 0, 
+    currentTime: 0,
+    isActive: false
+  });
 
   // Charger les détails de la room
   useEffect(() => {
@@ -139,61 +164,6 @@ export default function RoomDetailPage() {
       // Écouter les nouveaux messages
       socket.socket?.on('new-message', (message: Message) => {
         setMessages((prevMessages) => [...prevMessages, message]);
-      });
-      
-      // Écouter les notifications de téléchargement
-      socket.socket?.on('song-download-started', () => {
-        setIsDownloading(true);
-        toast({
-          title: "Téléchargement",
-          description: "Téléchargement de la musique en cours...",
-        });
-      });
-      
-      // Écouter les informations sur la chanson en cours
-      socket.socket?.on('song-playing', (songInfo: SongInfo) => {
-        setCurrentSong(songInfo);
-        setIsDownloading(false);
-        toast({
-          title: "Lecture",
-          description: `Lecture de "${songInfo.title}"`,
-        });
-        
-        // Lancer la lecture automatiquement
-        if (audioRef.current) {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://87.106.162.205:5001';
-          audioRef.current.src = `${apiUrl}${songInfo.url}`;
-          audioRef.current.play().catch(err => console.error('Erreur de lecture:', err));
-        }
-      });
-      
-      // Écouter la fin de la chanson
-      socket.socket?.on('song-ended', () => {
-        setCurrentSong(null);
-        toast({
-          title: "Lecture terminée",
-          description: "La chanson est terminée.",
-        });
-      });
-      
-      // Écouter les erreurs de téléchargement
-      socket.socket?.on('song-error', (error: { error: string }) => {
-        setIsDownloading(false);
-        toast({
-          title: "Erreur",
-          description: `Erreur lors du téléchargement: ${error.error}`,
-          variant: "destructive"
-        });
-      });
-      
-      // Écouter la fermeture de la room
-      socket.socket?.on('room-closed', () => {
-        toast({
-          title: "Room fermée",
-          description: "Cette room a été fermée par son créateur.",
-          variant: "destructive"
-        });
-        router.push('/room');
       });
       
       // NOUVEAU: Écouter l'événement amélioré user-joined-with-data qui contient toutes les données de la room
@@ -299,23 +269,347 @@ export default function RoomDetailPage() {
         }
       });
       
+      // Écouter les événements de musique et gérer la synchronisation de la lecture
+      socket.socket?.on('song-download-started', () => {
+        setIsDownloading(true);
+        toast({
+          title: "Téléchargement",
+          description: "Téléchargement de la musique en cours...",
+        });
+      });
+      
+      // Écouter les informations sur la chanson en cours et le signal de démarrage
+      socket.socket?.on('song-playing', (songInfo: any) => {
+        console.log("Signal de lecture reçu:", songInfo);
+        setIsDownloading(false);
+        setCurrentSong(songInfo);
+        
+        // Récupérer la durée directement depuis les données de la chanson
+        const songDuration = songInfo.duration || 0;
+        console.log("⏱️ Durée extraite du signal:", songDuration);
+        
+        // Initialiser le timer manuel avec la durée reçue
+        setManualTimer({
+          duration: songDuration,
+          currentTime: 0,
+          isActive: true
+        });
+        
+        // Stocker le temps de démarrage pour les calculs de synchronisation
+        songStartTimeRef.current = songInfo.startTime;
+        
+        if (audioRef.current) {
+          try {
+            // Préparer l'audio avec le chemin correct
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://87.106.162.205:5001';
+            const audioUrl = `${apiUrl}${songInfo.url}`;
+            console.log("Chargement de l'audio depuis:", audioUrl);
+            
+            audioRef.current.src = audioUrl;
+            audioRef.current.load();
+            
+            // Calculer le délai pour démarrer la lecture
+            const currentTime = Date.now();
+            const delay = songInfo.startTime - currentTime;
+            
+            console.log(`Délai de lecture programmé: ${delay}ms`);
+            
+            // Fonction pour tenter plusieurs stratégies de lecture automatique
+            const tryAutoPlay = async (audio: HTMLAudioElement) => {
+              // Stratégie 1: Essayer de lire directement
+              try {
+                await audio.play();
+                return true;
+              } catch (error) {
+                console.log("Stratégie 1 échouée, tentative avec le son coupé");
+              }
+              
+              // Stratégie 2: Essayer de lire avec le son coupé
+              try {
+                const originalVolume = audio.volume;
+                audio.volume = 0;
+                await audio.play();
+                
+                // Rétablir progressivement le volume après le démarrage
+                setTimeout(() => {
+                  // Augmenter progressivement le volume pour éviter une transition brutale
+                  const fadeIn = setInterval(() => {
+                    if (audio.volume < originalVolume) {
+                      audio.volume = Math.min(audio.volume + 0.1, originalVolume);
+                    } else {
+                      clearInterval(fadeIn);
+                    }
+                  }, 100);
+                }, 500);
+                
+                return true;
+              } catch (error) {
+                console.error("Échec de toutes les stratégies de lecture automatique:", error);
+                return false;
+              }
+            };
+            
+            // Gérer le cas où le délai est positif (futur)
+            if (delay > 0) {
+              toast({
+                title: "Synchronisation",
+                description: `Lecture automatique dans ${Math.ceil(delay/1000)} secondes`,
+              });
+              
+              setTimeout(async () => {
+                console.log("Tentative de lecture automatique");
+                
+                const success = await tryAutoPlay(audioRef.current!);
+                
+                if (!success) {
+                  // Créer un message pour l'utilisateur
+                  toast({
+                    title: "Interaction requise",
+                    description: "Cliquez sur Play pour démarrer la lecture",
+                    variant: "destructive",
+                  });
+                }
+              }, delay);
+            } 
+            // Gérer le cas où le délai est négatif (nous sommes en retard)
+            else {
+              const seekPosition = Math.abs(delay) / 1000;
+              console.log(`Rattrapage: positionnement à ${seekPosition}s`);
+              
+              audioRef.current.currentTime = seekPosition;
+              tryAutoPlay(audioRef.current);
+            }
+          } catch (error) {
+            console.error("Erreur lors de la préparation de l'audio:", error);
+            toast({
+              title: "Erreur",
+              description: "Impossible de lire l'audio",
+              variant: "destructive"
+            });
+          }
+        }
+      });
+      
+      // Écouter la fin de la chanson
+      socket.socket?.on('song-ended', () => {
+        setCurrentSong(null);
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        }
+        
+        // Arrêter le timer manuel
+        setManualTimer(prev => ({ ...prev, isActive: false, currentTime: 0 }));
+        
+        toast({
+          title: "Lecture terminée",
+          description: "La chanson est terminée.",
+        });
+      });
+      
+      // Écouter les erreurs de téléchargement
+      socket.socket?.on('song-error', (error: { error: string }) => {
+        setIsDownloading(false);
+        toast({
+          title: "Erreur",
+          description: `Erreur lors du téléchargement: ${error.error}`,
+          variant: "destructive"
+        });
+      });
+      
+      // Écouter la fermeture de la room
+      socket.socket?.on('room-closed', () => {
+        toast({
+          title: "Room fermée",
+          description: "Cette room a été fermée par son créateur.",
+          variant: "destructive"
+        });
+        router.push('/room');
+      });
+      
+      // Écouter les événements de synchronisation
+      socket.socket?.on('playback-sync', ({ currentTime, userId }: { currentTime: number, userId: number }) => {
+        if (audioRef.current && Math.abs(audioRef.current.currentTime - currentTime) > 3) {
+          console.log(`Resynchronisation de la lecture: différence de ${Math.abs(audioRef.current.currentTime - currentTime)}s`);
+          audioRef.current.currentTime = currentTime;
+        }
+      });
+      
+      // Envoyer périodiquement l'état de la lecture pour synchronisation
+      syncTimerRef.current = setInterval(() => {
+        if (audioRef.current && !audioRef.current.paused && user && currentSong) {
+          socket.socket?.emit('sync-playback', roomId, audioRef.current.currentTime, user.id);
+        }
+      }, 10000); // Synchroniser toutes les 10 secondes
+      
       // Nettoyage à la déconnexion
       return () => {
         console.log("Déconnexion de la room Socket.IO:", roomId);
         socket.socket?.emit('leave-room', roomId, user.id);
         socket.socket?.off('new-message');
+        socket.socket?.off('user-joined');
+        socket.socket?.off('user-left');
+        socket.socket?.off('user-joined-with-data');
+        socket.socket?.off('user-left-with-data');
         socket.socket?.off('song-download-started');
         socket.socket?.off('song-playing');
         socket.socket?.off('song-ended');
         socket.socket?.off('song-error');
         socket.socket?.off('room-closed');
-        socket.socket?.off('user-joined');
-        socket.socket?.off('user-left');
-        socket.socket?.off('user-joined-with-data');
-        socket.socket?.off('user-left-with-data');
+        socket.socket?.off('playback-sync');
+        if (syncTimerRef.current) {
+          clearInterval(syncTimerRef.current);
+        }
       };
     }
   }, [socket, user, roomId, router, toast, suppressNotifications]);
+
+  // Gérer les événements de l'audio
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    // Définir une fonction pour initialiser l'audio après chargement
+    const initAudio = () => {
+      // Forcer la récupération de la durée une fois que les métadonnées sont chargées
+      if (audio.duration && audio.duration > 0) {
+        console.log("⏱️ Durée audio détectée:", audio.duration);
+        setAudioState(prev => ({
+          ...prev,
+          duration: audio.duration
+        }));
+      }
+    };
+    
+    // Déclencher l'initialisation lors du chargement des métadonnées
+    audio.addEventListener('loadedmetadata', initAudio);
+    
+    // Essayer d'initialiser immédiatement si les métadonnées sont déjà disponibles
+    if (audio.readyState >= 2) {
+      initAudio();
+    }
+    
+    // Mettre à jour le timer fréquemment pour une animation plus fluide
+    const timerInterval = setInterval(() => {
+      if (!audio.paused && audio.duration > 0) {
+        setAudioState(prev => ({
+          ...prev,
+          currentTime: audio.currentTime,
+          duration: audio.duration
+        }));
+      }
+    }, 100); // Mise à jour plus fréquente pour une animation fluide
+    
+    const handleTimeUpdate = () => {
+      setAudioState(prev => ({
+        ...prev,
+        currentTime: audio.currentTime,
+      }));
+    };
+    
+    const handleDurationChange = () => {
+      if (audio.duration && audio.duration > 0) {
+        console.log("⏱️ Durée mise à jour:", audio.duration);
+        setAudioState(prev => ({
+          ...prev,
+          duration: audio.duration,
+        }));
+      }
+    };
+    
+    const handleLoadedMetadata = () => {
+      if (audio.duration && audio.duration > 0) {
+        console.log("⏱️ Métadonnées chargées, durée:", audio.duration);
+        setAudioState(prev => ({
+          ...prev,
+          duration: audio.duration,
+        }));
+      }
+    };
+    
+    const handleLoadedData = () => {
+      if (audio.duration && audio.duration > 0) {
+        console.log("⏱️ Données audio chargées, durée:", audio.duration);
+        setAudioState(prev => ({
+          ...prev,
+          duration: audio.duration,
+        }));
+      }
+    };
+    
+    const handleCanPlay = () => {
+      if (audio.duration && audio.duration > 0) {
+        console.log("⏱️ Audio prêt à être joué, durée:", audio.duration);
+        setAudioState(prev => ({
+          ...prev,
+          duration: audio.duration,
+        }));
+      }
+    };
+    
+    const handleVolumeChange = () => {
+      setAudioState(prev => ({
+        ...prev,
+        volume: audio.volume,
+      }));
+    };
+    
+    const handlePlay = () => {
+      console.log("▶️ Lecture démarrée");
+      setAudioState(prev => ({
+        ...prev,
+        isPlaying: true,
+      }));
+    };
+    
+    const handlePause = () => {
+      console.log("⏸️ Lecture en pause");
+      setAudioState(prev => ({
+        ...prev,
+        isPlaying: false,
+      }));
+    };
+    
+    const handleEnded = () => {
+      console.log("⏹️ Lecture terminée");
+      setAudioState(prev => ({
+        ...prev,
+        isPlaying: false,
+        currentTime: 0,
+      }));
+      
+      // Informer le serveur que la chanson est terminée
+      if (socket && socket.isConnected && roomId) {
+        socket.socket?.emit('song-ended', roomId);
+      }
+    };
+    
+    // Ajouter les écouteurs d'événements
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('durationchange', handleDurationChange);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('loadeddata', handleLoadedData);
+    audio.addEventListener('canplay', handleCanPlay);
+    audio.addEventListener('volumechange', handleVolumeChange);
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
+    audio.addEventListener('ended', handleEnded);
+    
+    // Nettoyer les écouteurs d'événements
+    return () => {
+      clearInterval(timerInterval);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('durationchange', handleDurationChange);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('loadeddata', handleLoadedData);
+      audio.removeEventListener('canplay', handleCanPlay);
+      audio.removeEventListener('volumechange', handleVolumeChange);
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('loadedmetadata', initAudio);
+    };
+  }, [roomId, socket]);
 
   // Faire défiler vers le bas lorsque de nouveaux messages arrivent
   useEffect(() => {
@@ -344,6 +638,17 @@ export default function RoomDetailPage() {
   // Ajouter une musique depuis YouTube
   const handleAddSong = async () => {
     if (!youtubeUrl.trim() || !room) return;
+    
+    // Vérifier si une musique est déjà en cours de lecture
+    if (currentSong && audioState.isPlaying) {
+      toast({
+        title: "Lecture en cours",
+        description: "Une musique est déjà en cours de lecture. Attendez la fin ou mettez en pause avant d'ajouter une nouvelle musique.",
+        variant: "destructive"
+      });
+      setYoutubeDialogOpen(false);
+      return;
+    }
     
     try {
       setIsAddingSong(true);
@@ -446,6 +751,65 @@ export default function RoomDetailPage() {
     return () => clearInterval(interval);
   }, [roomId, loading, router, toast, room]);
 
+  // Modifier l'effet pour cliquer sur le bouton play invisible lorsque le composant est monté
+  useEffect(() => {
+    if (currentSong && audioRef.current && !hasAutoPlayedRef.current && playButtonRef.current) {
+      // Attendre que l'audio soit chargé
+      const handleCanPlay = () => {
+        console.log("Audio chargé, déclenchement automatique de la lecture");
+        
+        // Déclencher automatiquement la lecture
+        playButtonRef.current?.click();
+        
+        // Marquer comme déjà auto-joué pour éviter les boucles
+        hasAutoPlayedRef.current = true;
+        
+        // Retirer l'écouteur
+        audioRef.current?.removeEventListener('canplaythrough', handleCanPlay);
+      };
+      
+      // Ajouter un écouteur pour savoir quand l'audio est prêt
+      audioRef.current.addEventListener('canplaythrough', handleCanPlay);
+      
+      // Nettoyer l'écouteur si le composant est démonté
+      return () => {
+        audioRef.current?.removeEventListener('canplaythrough', handleCanPlay);
+      };
+    }
+  }, [currentSong]);
+
+  // Réinitialiser le flag d'auto-play quand la chanson change
+  useEffect(() => {
+    hasAutoPlayedRef.current = false;
+  }, [currentSong?.url]);
+
+  // Ajouter un effet pour gérer le timer manuel
+  useEffect(() => {
+    let timerInterval: NodeJS.Timeout | null = null;
+    
+    if (manualTimer.isActive) {
+      timerInterval = setInterval(() => {
+        setManualTimer(prev => {
+          // Arrêter le timer s'il atteint la durée totale
+          if (prev.currentTime >= prev.duration) {
+            clearInterval(timerInterval as NodeJS.Timeout);
+            return { ...prev, isActive: false, currentTime: 0 };
+          }
+          
+          // Sinon, incrémenter le temps actuel
+          return { ...prev, currentTime: prev.currentTime + 1 };
+        });
+      }, 1000);
+    }
+    
+    // Nettoyer le timer lors du démontage
+    return () => {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+      }
+    };
+  }, [manualTimer.isActive]);
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
@@ -545,11 +909,18 @@ export default function RoomDetailPage() {
                 </h2>
                 <Button 
                   onClick={() => setYoutubeDialogOpen(true)}
-                  className="bg-violet-600 hover:bg-violet-700 flex items-center gap-1"
-                  disabled={isDownloading}
+                  className={`flex items-center gap-1 ${
+                    audioState.isPlaying
+                      ? "bg-gray-600 hover:bg-gray-700" 
+                      : "bg-violet-600 hover:bg-violet-700"
+                  }`}
+                  disabled={isDownloading || audioState.isPlaying}
                 >
                   <IconBrandYoutube className="h-4 w-4" />
-                  Ajouter une musique
+                  {audioState.isPlaying
+                    ? "Lecture en cours..."
+                    : "Ajouter une musique"
+                  }
                 </Button>
               </div>
 
@@ -571,16 +942,77 @@ export default function RoomDetailPage() {
                       <p className="text-zinc-400 mb-2">{currentSong.channel}</p>
                       <div className="flex items-center gap-2 text-sm text-zinc-500">
                         <Badge variant="outline" className="bg-zinc-800/50">
-                          {Math.floor(currentSong.duration / 60)}:{String(currentSong.duration % 60).padStart(2, '0')}
+                          {manualTimer.duration > 0 
+                            ? `${Math.floor(manualTimer.duration / 60)}:${String(Math.floor(manualTimer.duration % 60)).padStart(2, '0')}`
+                            : audioState.duration > 0 
+                              ? `${Math.floor(audioState.duration / 60)}:${String(Math.floor(audioState.duration % 60)).padStart(2, '0')}`
+                              : "00:00"}
                         </Badge>
                       </div>
                     </div>
                   </div>
                   
+                  {/* Interface de lecture avec timer visuel amélioré basé sur le timer manuel */}
+                  <div className="mt-2 mb-5">
+                    <div className="w-full h-3 bg-zinc-800 border border-zinc-700 rounded-full mb-2 overflow-hidden relative">
+                      <div 
+                        className="h-full bg-gradient-to-r from-violet-500 to-violet-700 rounded-full transition-all"
+                        style={{ 
+                          width: `${manualTimer.duration > 0 
+                            ? (manualTimer.currentTime / manualTimer.duration) * 100 
+                            : audioState.duration > 0 
+                              ? (audioState.currentTime / audioState.duration) * 100 
+                              : 0}%` 
+                        }}
+                      ></div>
+                    </div>
+                    
+                    {/* Timer visuel basé sur le timer manuel */}
+                    <div className="flex justify-between text-xs text-zinc-400">
+                      <span className="tabular-nums">
+                        {manualTimer.isActive 
+                          ? `${Math.floor(manualTimer.currentTime / 60)}:${String(Math.floor(manualTimer.currentTime % 60)).padStart(2, '0')}`
+                          : audioState.currentTime > 0 
+                            ? `${Math.floor(audioState.currentTime / 60)}:${String(Math.floor(audioState.currentTime % 60)).padStart(2, '0')}`
+                            : "00:00"}
+                      </span>
+                      <span className="tabular-nums">
+                        {manualTimer.duration > 0 
+                          ? `-${Math.floor((manualTimer.duration - manualTimer.currentTime) / 60)}:${String(Math.floor((manualTimer.duration - manualTimer.currentTime) % 60)).padStart(2, '0')}` 
+                          : audioState.duration > 0 
+                            ? `-${Math.floor((audioState.duration - audioState.currentTime) / 60)}:${String(Math.floor((audioState.duration - audioState.currentTime) % 60)).padStart(2, '0')}` 
+                            : "-00:00"}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Débogage du temps pour voir les valeurs récupérées */}
+                  <div className="hidden">
+                    Timer manuel: {manualTimer.currentTime.toFixed(0)} / {manualTimer.duration.toFixed(0)} | 
+                    Audio: {audioState.currentTime.toFixed(2)} / {audioState.duration.toFixed(2)}
+                  </div>
+                  
+                  {/* Bouton play invisible pour déclenchement automatique */}
+                  <Button 
+                    ref={playButtonRef}
+                    className="hidden"
+                    onClick={() => {
+                      if (audioRef.current) {
+                        if (audioRef.current.paused) {
+                          console.log("Tentative de lecture via le bouton invisible");
+                          audioRef.current.play().catch(err => console.error('Erreur de lecture:', err));
+                        }
+                      }
+                    }}
+                  >
+                    Lire
+                  </Button>
+                  
+                  {/* Élément audio avec preload eager pour assurer le chargement des métadonnées */}
                   <audio 
                     ref={audioRef}
-                    controls 
-                    className="w-full"
+                    className="hidden"
+                    preload="auto"
                     autoPlay
                   >
                     <source src={getFullImageUrl(currentSong?.url)} type="audio/mpeg" />
