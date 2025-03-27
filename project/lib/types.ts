@@ -21,9 +21,11 @@ export interface Room {
   currentSong?: string;
   users: User[];
   messages: Message[];
+  userCount?: number;
   _count?: {
     users: number;
   };
+  _lastUpdated?: number; // Timestamp pour suivre la dernière mise à jour côté client
 }
 
 // Types pour les messages

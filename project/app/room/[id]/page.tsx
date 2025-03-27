@@ -31,6 +31,7 @@ import {
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { getFullImageUrl } from '@/lib/utils';
 
 export default function RoomDetailPage() {
   const { id } = useParams();
@@ -54,6 +55,9 @@ export default function RoomDetailPage() {
   const [youtubeDialogOpen, setYoutubeDialogOpen] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [isAddingSong, setIsAddingSong] = useState(false);
+  
+  // Variable pour suivre si nous sommes dans la période de grâce après création
+  const [suppressNotifications, setSuppressNotifications] = useState(false);
 
   // Charger les détails de la room
   useEffect(() => {
@@ -64,6 +68,21 @@ export default function RoomDetailPage() {
         setRoom(data);
         setMessages(data.messages);
         setError(null);
+        
+        // Vérifier si la room vient d'être créée (moins de 5 secondes)
+        const roomCreationTime = new Date(data.createdAt).getTime();
+        const currentTime = Date.now();
+        const timeDifference = currentTime - roomCreationTime;
+        
+        // Si la room a été créée il y a moins de 5 secondes, supprimer les notifications
+        if (timeDifference < 5000) {
+          setSuppressNotifications(true);
+          
+          // Après 5 secondes, réactiver les notifications
+          setTimeout(() => {
+            setSuppressNotifications(false);
+          }, 5000 - timeDifference);
+        }
       } catch (err) {
         console.error('Erreur lors du chargement des détails de la room:', err);
         setError('Impossible de charger les détails de la room.');
@@ -86,6 +105,8 @@ export default function RoomDetailPage() {
   // Connexion à la room via Socket.IO
   useEffect(() => {
     if (socket && socket.isConnected && user && roomId) {
+      console.log("Connexion à la room Socket.IO:", roomId);
+      
       // Rejoindre la room
       socket.socket?.emit('join-room', roomId, user.id);
       
@@ -149,24 +170,112 @@ export default function RoomDetailPage() {
         router.push('/room');
       });
       
-      // Écouter les utilisateurs qui rejoignent la room
-      socket.socket?.on('user-joined', (userId: number) => {
-        toast({
-          title: "Nouvel utilisateur",
-          description: "Un utilisateur a rejoint la room.",
-        });
+      // NOUVEAU: Écouter l'événement amélioré user-joined-with-data qui contient toutes les données de la room
+      socket.socket?.on('user-joined-with-data', (updatedRoom: Room) => {
+        console.log("Données complètes reçues - utilisateur a rejoint:", updatedRoom);
+        
+        if (updatedRoom) {
+          // Mettre à jour directement avec les données complètes
+          setRoom(updatedRoom);
+          
+          // Afficher une notification seulement si nous ne sommes pas dans la période de grâce
+          if (!suppressNotifications) {
+            toast({
+              title: "Nouvel utilisateur",
+              description: "Un utilisateur a rejoint la room.",
+            });
+          }
+        }
       });
       
-      // Écouter les utilisateurs qui quittent la room
-      socket.socket?.on('user-left', (userId: number) => {
-        toast({
-          title: "Utilisateur parti",
-          description: "Un utilisateur a quitté la room.",
-        });
+      // Conserver également l'ancien événement pour la compatibilité
+      socket.socket?.on('user-joined', async (userId: number) => {
+        console.log("Ancien événement - utilisateur a rejoint:", userId);
+        
+        // Si nous n'avons pas reçu l'événement complet, essayer de récupérer les données
+        try {
+          const updatedRoomData = await roomsApi.getRoomById(roomId);
+          
+          if (updatedRoomData) {
+            // Éviter de remplacer si nous avons déjà reçu les données complètes
+            setRoom(prevRoom => {
+              // Si l'événement complet a déjà mis à jour la room avec cet utilisateur
+              const hasUser = prevRoom?.users?.some(u => u.id === userId);
+              if (hasUser) return prevRoom;
+              
+              return {
+                ...prevRoom,
+                ...updatedRoomData,
+                _lastUpdated: Date.now()
+              };
+            });
+          }
+          
+          // Afficher une notification seulement si nous ne sommes pas dans la période de grâce
+          if (!suppressNotifications) {
+            toast({
+              title: "Nouvel utilisateur",
+              description: "Un utilisateur a rejoint la room.",
+            });
+          }
+        } catch (error) {
+          console.error("Erreur lors de la mise à jour des infos de la room:", error);
+        }
+      });
+      
+      // NOUVEAU: Écouter l'événement amélioré user-left-with-data qui contient toutes les données de la room
+      socket.socket?.on('user-left-with-data', (updatedRoom: Room) => {
+        console.log("Données complètes reçues - utilisateur a quitté:", updatedRoom);
+        
+        if (updatedRoom) {
+          // Mettre à jour directement avec les données complètes
+          setRoom(updatedRoom);
+          
+          // Afficher une notification seulement si nous ne sommes pas dans la période de grâce
+          if (!suppressNotifications) {
+            toast({
+              title: "Utilisateur parti",
+              description: "Un utilisateur a quitté la room.",
+            });
+          }
+        }
+      });
+      
+      // Conserver également l'ancien événement pour la compatibilité
+      socket.socket?.on('user-left', async (userId: number) => {
+        console.log("Ancien événement - utilisateur a quitté:", userId);
+        
+        // Si nous n'avons pas reçu l'événement complet, essayer de récupérer les données
+        try {
+          const updatedRoomData = await roomsApi.getRoomById(roomId);
+          
+          // Éviter de remplacer si nous avons déjà reçu les données complètes
+          setRoom(prevRoom => {
+            // Si l'événement complet a déjà mis à jour la room sans cet utilisateur
+            const stillHasUser = prevRoom?.users?.some(u => u.id === userId);
+            if (!stillHasUser) return prevRoom;
+            
+            return {
+              ...updatedRoomData,
+              _lastUpdated: Date.now()
+            };
+          });
+          
+          // Afficher une notification seulement si nous ne sommes pas dans la période de grâce
+          if (!suppressNotifications) {
+            toast({
+              title: "Utilisateur parti",
+              description: "Un utilisateur a quitté la room.",
+            });
+          }
+        } catch (error) {
+          console.error("Erreur lors de la mise à jour des infos de la room:", error);
+        }
       });
       
       // Nettoyage à la déconnexion
       return () => {
+        console.log("Déconnexion de la room Socket.IO:", roomId);
         socket.socket?.emit('leave-room', roomId, user.id);
         socket.socket?.off('new-message');
         socket.socket?.off('song-download-started');
@@ -176,9 +285,11 @@ export default function RoomDetailPage() {
         socket.socket?.off('room-closed');
         socket.socket?.off('user-joined');
         socket.socket?.off('user-left');
+        socket.socket?.off('user-joined-with-data');
+        socket.socket?.off('user-left-with-data');
       };
     }
-  }, [socket, user, roomId, router, toast]);
+  }, [socket, user, roomId, router, toast, suppressNotifications]);
 
   // Faire défiler vers le bas lorsque de nouveaux messages arrivent
   useEffect(() => {
@@ -260,6 +371,55 @@ export default function RoomDetailPage() {
     }
   };
 
+  // Rafraîchissement automatique des informations de la room - Limité aux cas de secours
+  useEffect(() => {
+    if (!roomId || loading) return;
+    
+    // Fonction pour charger les dernières informations de la room en cas de secours
+    const refreshRoomData = async () => {
+      // Vérifier si la dernière mise à jour est trop ancienne (plus de 30 secondes)
+      if (room && Date.now() - (room._lastUpdated || 0) < 30000) {
+        return; // Pas besoin de rafraîchir si les données sont récentes
+      }
+      
+      try {
+        console.log("Rafraîchissement de secours des données de la room");
+        const updatedData = await roomsApi.getRoomById(roomId);
+        
+        // Ne mettre à jour que si la room existe toujours et est active
+        if (updatedData && updatedData.isActive) {
+          console.log("Mise à jour de secours des données de la room");
+          
+          setRoom(prevRoom => ({
+            ...updatedData,
+            _lastUpdated: Date.now()
+          }));
+        } else if (updatedData && !updatedData.isActive) {
+          // La room a été fermée entre temps
+          toast({
+            title: "Room fermée",
+            description: "Cette room a été fermée par son créateur",
+            variant: "destructive"
+          });
+          router.push('/room');
+        }
+      } catch (error) {
+        console.error('Erreur lors du rafraîchissement des données de la room:', error);
+      }
+    };
+    
+    // Lancer le rafraîchissement automatique toutes les 30 secondes comme dernier recours
+    const interval = setInterval(refreshRoomData, 30000);
+    
+    // Effectuer un rafraîchissement initial pour s'assurer d'avoir les données complètes
+    if (!room || !room._lastUpdated) {
+      refreshRoomData();
+    }
+    
+    // Nettoyage à la déconnexion
+    return () => clearInterval(interval);
+  }, [roomId, loading, router, toast, room]);
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
@@ -315,9 +475,14 @@ export default function RoomDetailPage() {
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-white">{room.name}</h1>
             <p className="text-zinc-400 text-sm flex items-center mt-1">
-              <span>Créée par {room.creator.username}</span>
+              <span>Créée par {room.creator?.username || 'Utilisateur inconnu'}</span>
               <span className="mx-2">•</span>
-              <span>{formatDistanceToNow(new Date(room.createdAt), { addSuffix: true, locale: fr })}</span>
+              <span>
+                {room.createdAt && !isNaN(new Date(room.createdAt).getTime()) 
+                  ? formatDistanceToNow(new Date(room.createdAt), { addSuffix: true, locale: fr })
+                  : 'Date inconnue'
+                }
+              </span>
             </p>
           </div>
           <div className="flex gap-2">
@@ -392,7 +557,7 @@ export default function RoomDetailPage() {
                     className="w-full"
                     autoPlay
                   >
-                    <source src={`${process.env.NEXT_PUBLIC_API_URL || 'http://87.106.162.205:5001'}${currentSong.url}`} type="audio/mpeg" />
+                    <source src={getFullImageUrl(currentSong?.url)} type="audio/mpeg" />
                     Votre navigateur ne supporte pas la lecture audio.
                   </audio>
                 </div>
@@ -411,18 +576,18 @@ export default function RoomDetailPage() {
             <Card className="bg-zinc-900/70 border-violet-500/20 p-6 mt-6">
               <h2 className="text-xl font-semibold text-white flex items-center gap-2 mb-4">
                 <IconUsers className="h-5 w-5 text-violet-400" />
-                Participants ({room.users.length})
+                Participants ({room.users ? room.users.length : 0})
               </h2>
               
               <div className="flex flex-wrap gap-2">
-                {room.users.map((user) => (
-                  <Badge key={user.id} variant="outline" className="bg-zinc-800/50 p-1 pl-0.5 pr-2">
+                {room.users && room.users.map((roomUser) => (
+                  <Badge key={roomUser.id} variant="outline" className="bg-zinc-800/50 p-1 pl-0.5 pr-2">
                     <Avatar className="h-6 w-6 mr-1">
-                      <AvatarImage src={user.profilePicture} alt={user.username} />
-                      <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
+                      <AvatarImage src={getFullImageUrl(roomUser.profilePicture)} alt={roomUser.username} />
+                      <AvatarFallback>{roomUser.username?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
                     </Avatar>
-                    <span>{user.username}</span>
-                    {room.creatorId === user.id && (
+                    <span>{roomUser.username}</span>
+                    {room.creatorId === roomUser.id && (
                       <span className="ml-1 text-xs text-violet-400">(créateur)</span>
                     )}
                   </Badge>
@@ -439,7 +604,7 @@ export default function RoomDetailPage() {
               </div>
               
               <ScrollArea className="flex-1 p-4">
-                {messages.length === 0 ? (
+                {!messages || messages.length === 0 ? (
                   <div className="text-center py-8 text-zinc-500">
                     <p>Aucun message.</p>
                     <p>Soyez le premier à écrire !</p>
@@ -449,13 +614,13 @@ export default function RoomDetailPage() {
                     {messages.map((message) => (
                       <div key={message.id} className="flex gap-3">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={message.user.profilePicture} alt={message.user.username} />
-                          <AvatarFallback>{message.user.username.charAt(0).toUpperCase()}</AvatarFallback>
+                          <AvatarImage src={getFullImageUrl(message.user?.profilePicture)} alt={message.user?.username || 'Utilisateur'} />
+                          <AvatarFallback>{message.user?.username?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-white">
-                              {message.user.username}
+                              {message.user?.username || 'Utilisateur inconnu'}
                             </span>
                             <span className="text-xs text-zinc-500">
                               {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true, locale: fr })}

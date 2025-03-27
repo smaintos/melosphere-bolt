@@ -600,17 +600,20 @@ export const roomsApi = {
   
   // Rejoindre une room
   joinRoom: (roomId: string) => fetchApi(`/api/rooms/${roomId}/join`, {
-    method: 'POST'
+    method: 'POST',
+    body: JSON.stringify({})
   }),
   
   // Quitter une room
   leaveRoom: (roomId: string) => fetchApi(`/api/rooms/${roomId}/leave`, {
-    method: 'POST'
+    method: 'POST',
+    body: JSON.stringify({})
   }),
   
   // Fermer une room
   closeRoom: (roomId: string) => fetchApi(`/api/rooms/${roomId}`, {
-    method: 'DELETE'
+    method: 'DELETE',
+    body: JSON.stringify({})
   }),
   
   // Envoyer un message dans une room

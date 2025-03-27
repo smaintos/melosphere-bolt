@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { Room } from '@/lib/types';
 import { roomsApi } from '@/lib/api';
+import { getFullImageUrl } from '@/lib/utils';
 
 export default function RoomPage() {
   const { user } = useAuth();
@@ -35,7 +36,15 @@ export default function RoomPage() {
       try {
         setLoading(true);
         const data = await roomsApi.getAllRooms();
-        setRooms(data);
+        
+        // S'assurer que les données des utilisateurs sont complètes
+        const roomsWithUserCount = data.map((room: Room) => ({
+          ...room,
+          // Toujours compter au moins 1 utilisateur (le créateur) même si la liste est vide
+          userCount: room._count?.users || (room.users?.length || 1)
+        }));
+        
+        setRooms(roomsWithUserCount);
         setError(null);
       } catch (err) {
         console.error('Erreur lors du chargement des rooms:', err);
@@ -51,8 +60,8 @@ export default function RoomPage() {
     };
 
     fetchRooms();
-    // Rafraîchir les rooms toutes les 30 secondes
-    const interval = setInterval(fetchRooms, 30000);
+    // Rafraîchir les rooms toutes les 10 secondes au lieu de 30 pour être plus réactif
+    const interval = setInterval(fetchRooms, 10000);
     return () => clearInterval(interval);
   }, [toast]);
 
@@ -175,14 +184,14 @@ export default function RoomPage() {
                     <h2 className="text-xl font-semibold text-white truncate">{room.name}</h2>
                     <div className="flex items-center gap-2">
                       <Avatar className="h-6 w-6">
-                        <AvatarImage src={room.creator.profilePicture} alt={room.creator.username} />
-                        <AvatarFallback>{room.creator.username.charAt(0).toUpperCase()}</AvatarFallback>
+                        <AvatarImage src={getFullImageUrl(room.creator?.profilePicture)} alt={room.creator?.username || 'Utilisateur'} />
+                        <AvatarFallback>{room.creator?.username?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
                       </Avatar>
-                      <span className="text-sm text-zinc-400">Créée par {room.creator.username}</span>
+                      <span className="text-sm text-zinc-400">Créée par {room.creator?.username || 'Utilisateur inconnu'}</span>
                     </div>
                     <Badge variant="outline" className="w-fit flex items-center gap-1 bg-zinc-800/50">
                       <IconUsers className="h-3 w-3" />
-                      <span>{room._count?.users || 0} utilisateur{(room._count?.users || 0) > 1 ? 's' : ''}</span>
+                      <span>{room.userCount || 1} utilisateur{(room.userCount || 1) > 1 ? 's' : ''}</span>
                     </Badge>
                   </div>
                 </CardContent>
