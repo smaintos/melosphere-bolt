@@ -107,8 +107,34 @@ export default function RoomDetailPage() {
     if (socket && socket.isConnected && user && roomId) {
       console.log("Connexion à la room Socket.IO:", roomId);
       
-      // Rejoindre la room
-      socket.socket?.emit('join-room', roomId, user.id);
+      // Rejoindre la room via l'API et Socket.IO simultanément
+      const joinRoomAndUpdateState = async () => {
+        try {
+          // 1. Appel API pour rejoindre la room et obtenir les données mises à jour immédiatement
+          console.log("Appel API pour rejoindre la room");
+          const updatedRoomData = await roomsApi.joinRoom(roomId);
+          console.log("Données reçues après join API:", updatedRoomData);
+          
+          // 2. Mettre à jour l'état avec les données fraîches reçues de l'API
+          setRoom(prevRoom => ({
+            ...updatedRoomData,
+            _lastUpdated: Date.now()
+          }));
+          
+          // 3. Puis connecter via Socket.IO pour les mises à jour continues
+          socket.socket?.emit('join-room', roomId, user.id);
+        } catch (error) {
+          console.error("Erreur lors de la connexion à la room:", error);
+          toast({
+            title: "Erreur",
+            description: "Impossible de rejoindre la room. Veuillez réessayer.",
+            variant: "destructive"
+          });
+        }
+      };
+      
+      // Lancer le processus de connexion
+      joinRoomAndUpdateState();
       
       // Écouter les nouveaux messages
       socket.socket?.on('new-message', (message: Message) => {

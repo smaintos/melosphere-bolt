@@ -29,6 +29,7 @@ export default function RoomPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
   const [creatingRoom, setCreatingRoom] = useState(false);
+  const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
 
   // Charger la liste des rooms
   useEffect(() => {
@@ -101,18 +102,33 @@ export default function RoomPage() {
     }
   };
 
-  // Rejoindre une room
+  // Fonction pour rejoindre une room
   const handleJoinRoom = async (roomId: string) => {
+    setJoiningRoomId(roomId);
+    
     try {
-      await roomsApi.joinRoom(roomId);
-      router.push(`/room/${roomId}`);
-    } catch (err) {
-      console.error('Erreur lors de la connexion à la room:', err);
+      // Appel API pour rejoindre la room
+      console.log("Tentative de rejoindre la room:", roomId);
+      const response = await roomsApi.joinRoom(roomId);
+      console.log("Réponse complète après joinRoom:", response);
+      
+      // Si la réponse est positive, rediriger vers la page de la room
+      if (response) {
+        toast({
+          title: "Succès",
+          description: "Vous avez rejoint la room avec succès.",
+        });
+        router.push(`/room/${roomId}`);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la connexion à la room:", error);
       toast({
         title: "Erreur",
         description: "Impossible de rejoindre la room. Veuillez réessayer.",
         variant: "destructive"
       });
+    } finally {
+      setJoiningRoomId(null);
     }
   };
 
@@ -197,10 +213,19 @@ export default function RoomPage() {
                 </CardContent>
                 <CardFooter className="bg-zinc-800/30 p-4">
                   <Button 
-                    className="w-full bg-violet-600 hover:bg-violet-700"
+                    variant="secondary"
+                    className="bg-violet-600 hover:bg-violet-700 text-white text-xs rounded-sm"
                     onClick={() => handleJoinRoom(room.id)}
+                    disabled={creatingRoom || joiningRoomId === room.id}
                   >
-                    Rejoindre
+                    {joiningRoomId === room.id ? (
+                      <>
+                        <div className="w-4 h-4 mr-2 border-2 border-t-transparent border-white rounded-full animate-spin" />
+                        Connexion...
+                      </>
+                    ) : (
+                      'Rejoindre'
+                    )}
                   </Button>
                 </CardFooter>
               </Card>
