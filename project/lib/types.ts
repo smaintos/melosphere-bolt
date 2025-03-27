@@ -50,5 +50,8 @@ export interface SongInfo {
   channel: string;
   duration: number;
   url: string;
-  addedBy: number;
+  videoId: string;
+  addedAt: number;
+  startTime?: number;
+  addedBy?: number;
 } 
