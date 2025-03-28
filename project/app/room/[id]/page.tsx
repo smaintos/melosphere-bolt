@@ -31,7 +31,7 @@ import {
   IconVolume
 } from '@tabler/icons-react';
 import Link from 'next/link';
-import { formatDistanceToNow, format } from 'date-fns';
+import { formatDistanceToNow, format, addHours } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { getFullImageUrl } from '@/lib/utils';
 
@@ -1035,14 +1035,7 @@ export default function RoomDetailPage() {
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-white">{room.name}</h1>
               <p className="text-zinc-400 text-sm flex items-center mt-1">
-                <span>Créée par {room.creator?.username || 'Utilisateur inconnu'}</span>
-                <span className="mx-2">•</span>
-                <span>
-                  {room.createdAt && !isNaN(new Date(room.createdAt).getTime()) 
-                    ? formatDistanceToNow(new Date(room.createdAt), { addSuffix: true, locale: fr })
-                    : 'Date inconnue'
-                  }
-                </span>
+                <span>{room.creator?.username || 'Utilisateur inconnu'} est le king de la sphere !</span>
               </p>
             </div>
             <div className="flex gap-2">
@@ -1084,9 +1077,6 @@ export default function RoomDetailPage() {
                           <div className="flex items-center gap-1">
                             <span className="font-medium text-white text-sm">
                               {message.user?.username || 'Utilisateur inconnu'}
-                            </span>
-                            <span className="text-xs text-zinc-500">
-                              {format(new Date(message.createdAt), 'HH:mm', { locale: fr })}
                             </span>
                           </div>
                           <p className="text-zinc-300 text-sm break-words">{message.content}</p>
@@ -1273,25 +1263,31 @@ export default function RoomDetailPage() {
             </div>
 
             {/* Participants à droite */}
-            <div className="w-64">
-              <div className="space-y-4">
-                {room.users && room.users.map((roomUser) => (
-                  <div key={roomUser.id} className="flex flex-col items-center">
-                    <div className="relative">
-                      <Avatar className="h-24 w-24 animate-float">
-                        <AvatarImage src={getFullImageUrl(roomUser.profilePicture)} alt={roomUser.username} />
-                        <AvatarFallback>{roomUser.username?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
-                      </Avatar>
-                      {room.creatorId === roomUser.id && (
-                        <div className="absolute -top-2 -right-2 bg-violet-500 rounded-full p-1">
-                          <IconUsers className="h-4 w-4 text-white" />
+            <div className="w-64 h-[calc(100vh-12rem)]">
+              <ScrollArea className="h-full">
+                <div className="grid grid-cols-1 sm:grid-cols-1 gap-4 p-1 pt-4">
+                  {room.users && room.users.length > 0 && (
+                    <div className={`grid ${room.users.length > 6 ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                      {room.users.map((roomUser) => (
+                        <div key={roomUser.id} className="flex flex-col items-center py-3">
+                          <div className="relative">
+                            <Avatar className="h-20 w-20 animate-float">
+                              <AvatarImage src={getFullImageUrl(roomUser.profilePicture)} alt={roomUser.username} />
+                              <AvatarFallback>{roomUser.username?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
+                            </Avatar>
+                            {room.creatorId === roomUser.id && (
+                              <div className="absolute -top-2 -right-2 bg-violet-500 rounded-full p-1">
+                                <IconUsers className="h-4 w-4 text-white" />
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-white font-medium mt-2 text-center text-sm">{roomUser.username}</span>
                         </div>
-                      )}
+                      ))}
                     </div>
-                    <span className="text-white font-medium mt-2">{roomUser.username}</span>
-                  </div>
-                ))}
-              </div>
+                  )}
+                </div>
+              </ScrollArea>
             </div>
           </div>
         </div>

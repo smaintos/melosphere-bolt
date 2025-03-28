@@ -147,7 +147,7 @@ export default function PlaylistDetailPage() {
                     {playlist.isPublic ? "Public" : "Privé"}
                   </Badge>
                 </div>
-                <p className="text-violet-400 text-sm">par {playlist.user.username}</p>
+                <p className="text-violet-400 text-sm">{playlist.user.username} est le king de la sphere !</p>
                 <p className="text-zinc-400 mt-4">{playlist.description}</p>
               </div>
               <div className="flex gap-2">
