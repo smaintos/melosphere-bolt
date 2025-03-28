@@ -1264,14 +1264,14 @@ export default function RoomDetailPage() {
 
             {/* Participants à droite */}
             <div className="w-64 h-[calc(100vh-12rem)]">
-              <ScrollArea className="h-full">
-                <div className="grid grid-cols-1 sm:grid-cols-1 gap-4 p-1 pt-4">
+              <ScrollArea className="h-full pr-2">
+                <div className="grid grid-cols-1 sm:grid-cols-1 gap-4 p-1 pt-6 pb-4">
                   {room.users && room.users.length > 0 && (
-                    <div className={`grid ${room.users.length > 6 ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                    <div className={`grid ${room.users.length > 6 ? 'grid-cols-2' : 'grid-cols-1'} gap-6`}>
                       {room.users.map((roomUser) => (
-                        <div key={roomUser.id} className="flex flex-col items-center py-3">
+                        <div key={roomUser.id} className="flex flex-col items-center py-4">
                           <div className="relative">
-                            <Avatar className="h-20 w-20 animate-float">
+                            <Avatar className="h-20 w-20 animate-float border-2 border-violet-500/30">
                               <AvatarImage src={getFullImageUrl(roomUser.profilePicture)} alt={roomUser.username} />
                               <AvatarFallback>{roomUser.username?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
                             </Avatar>
