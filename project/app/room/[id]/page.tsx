@@ -451,17 +451,27 @@ export default function RoomDetailPage() {
         // Ne pas ajouter notre propre indication de frappe
         if (userId === user.id) return;
         
+        console.log("Utilisateur en train d'écrire:", username, userId);
+        
         setUsersTyping(prev => {
           // Vérifier si cet utilisateur est déjà dans la liste
           const alreadyTyping = prev.some(u => u.id === userId);
           if (alreadyTyping) return prev;
           
-          return [...prev, {id: userId, username}];
+          const newState = [...prev, {id: userId, username}];
+          console.log("Liste mise à jour des utilisateurs qui écrivent:", newState);
+          return newState;
         });
       });
       
       socket.socket?.on('user-stop-typing', (userId: number) => {
-        setUsersTyping(prev => prev.filter(u => u.id !== userId));
+        console.log("Utilisateur a arrêté d'écrire:", userId);
+        
+        setUsersTyping(prev => {
+          const newState = prev.filter(u => u.id !== userId);
+          console.log("Liste mise à jour des utilisateurs qui écrivent après arrêt:", newState);
+          return newState;
+        });
       });
       
       // Nettoyer à la déconnexion
@@ -834,12 +844,32 @@ export default function RoomDetailPage() {
     };
   }, [manualTimer.isActive]);
 
-  // Gérer le changement du message input pour signaler quand l'utilisateur tape
+  // Modifier l'effet de frappe pour corriger les problèmes de type
   useEffect(() => {
     // Seulement si l'utilisateur a commencé à taper quelque chose
     if (messageInput.trim().length > 0 && socket && socket.isConnected && user && roomId) {
-      // Émettre l'événement "user-typing"
-      socket.socket?.emit('user-typing', roomId, user.id, user.username || 'Utilisateur');
+      // Obtenir le nom d'utilisateur à partir de l'objet user
+      let username = 'Utilisateur'; // Valeur par défaut
+      // Accéder aux propriétés de façon sécurisée avec le type 'any' pour éviter les erreurs
+      const userAny = user as any;
+      if (userAny && typeof userAny === 'object') {
+        if (userAny.username) {
+          username = userAny.username;
+        } else if (userAny.name) {
+          username = userAny.name;
+        } else if (userAny.email) {
+          username = userAny.email.split('@')[0]; // Utiliser la partie avant @ comme nom d'utilisateur
+        }
+      }
+      
+      console.log("Émission du signal de frappe:", roomId, user.id, username);
+      
+      // Émettre l'événement "user-typing" avec un objet conforme à ce que le serveur attend
+      socket.socket?.emit('user-typing', {
+        roomId: roomId,
+        userId: user.id,
+        username: username
+      });
       
       // Nettoyer le timer précédent si existant
       if (typingTimeoutRef.current) {
@@ -848,11 +878,19 @@ export default function RoomDetailPage() {
       
       // Définir un délai après lequel nous considérons que l'utilisateur a arrêté de taper
       typingTimeoutRef.current = setTimeout(() => {
-        socket.socket?.emit('user-stop-typing', roomId, user.id);
+        console.log("Émission du signal d'arrêt de frappe:", roomId, user.id);
+        socket.socket?.emit('user-stop-typing', {
+          roomId: roomId,
+          userId: user.id
+        });
       }, 2000); // 2 secondes d'inactivité = arrêt de frappe
     } else if (messageInput.trim().length === 0 && socket && socket.isConnected && user && roomId) {
       // Si l'utilisateur efface tout, signaler immédiatement l'arrêt de frappe
-      socket.socket?.emit('user-stop-typing', roomId, user.id);
+      console.log("Émission du signal d'arrêt de frappe (après effacement):", roomId, user.id);
+      socket.socket?.emit('user-stop-typing', {
+        roomId: roomId,
+        userId: user.id
+      });
       
       // Nettoyer le timer
       if (typingTimeoutRef.current) {
@@ -1152,7 +1190,7 @@ export default function RoomDetailPage() {
                 )}
               </ScrollArea>
               
-              {/* Indicateur de frappe */}
+              {/* Indicateur de frappe avec effet visuel amélioré */}
               {usersTyping.length > 0 && (
                 <div className="px-3 py-2 border-t border-zinc-800 text-xs text-zinc-400 italic">
                   {usersTyping.length === 1 ? (
