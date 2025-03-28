@@ -31,7 +31,7 @@ import {
   IconVolume
 } from '@tabler/icons-react';
 import Link from 'next/link';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { getFullImageUrl } from '@/lib/utils';
 
@@ -88,6 +88,12 @@ export default function RoomDetailPage() {
   const [usersTyping, setUsersTyping] = useState<{id: number, username: string}[]>([]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Ajouter un état pour suivre le temps de fin de la musique
+  const [songEndTime, setSongEndTime] = useState<number | null>(null);
+
+  // Variable pour suivre si une musique est en cours
+  const isMusicPlaying = Boolean(songEndTime && songEndTime > Date.now());
+
   // Charger les détails de la room
   useEffect(() => {
     const fetchRoomDetails = async () => {
@@ -97,6 +103,29 @@ export default function RoomDetailPage() {
         setRoom(data);
         setMessages(data.messages);
         setError(null);
+        
+        // Vérifier si une musique est en cours dans la room
+        if (data.currentSong && data.currentSongInfo) {
+          try {
+            const songInfo = JSON.parse(data.currentSongInfo);
+            setCurrentSong(songInfo);
+            
+            // Vérifier si la musique est toujours en cours
+            if (songInfo.endTime && songInfo.endTime > Date.now()) {
+              setSongEndTime(songInfo.endTime);
+              toast({
+                title: "Musique en cours",
+                description: "Une musique est déjà en cours de lecture dans cette room.",
+              });
+            } else {
+              // La musique est terminée
+              setCurrentSong(null);
+              setSongEndTime(null);
+            }
+          } catch (error) {
+            console.error('Erreur lors du parsing des informations de la musique:', error);
+          }
+        }
         
         // Vérifier si la room vient d'être créée (moins de 5 secondes)
         const roomCreationTime = new Date(data.createdAt).getTime();
@@ -287,6 +316,7 @@ export default function RoomDetailPage() {
         console.log("Signal de lecture reçu:", songInfo);
         setIsDownloading(false);
         setCurrentSong(songInfo);
+        setSongEndTime(songInfo.endTime);
         
         // Récupérer la durée directement depuis les données de la chanson
         const songDuration = songInfo.duration || 0;
@@ -397,6 +427,7 @@ export default function RoomDetailPage() {
       // Écouter la fin de la chanson
       socket.socket?.on('song-ended', () => {
         setCurrentSong(null);
+        setSongEndTime(null);
         if (audioRef.current) {
           audioRef.current.pause();
           audioRef.current.currentTime = 0;
@@ -673,32 +704,29 @@ export default function RoomDetailPage() {
   const handleAddSong = async () => {
     if (!youtubeUrl.trim() || !room) return;
     
-    // Vérifier si une musique est déjà en cours de lecture
-    if (currentSong && audioState.isPlaying) {
-      toast({
-        title: "Lecture en cours",
-        description: "Une musique est déjà en cours de lecture. Attendez la fin ou mettez en pause avant d'ajouter une nouvelle musique.",
-        variant: "destructive"
-      });
-      setYoutubeDialogOpen(false);
-      return;
-    }
-    
     try {
       setIsAddingSong(true);
       setYoutubeDialogOpen(false);
       
+      // Afficher immédiatement l'état de téléchargement
+      setIsDownloading(true);
+      toast({
+        title: "Téléchargement",
+        description: "Téléchargement de la musique en cours...",
+      });
+      
       await roomsApi.playYoutubeVideo(roomId, youtubeUrl);
       setYoutubeUrl('');
-    } catch (err) {
-      console.error('Erreur lors de l&apos;ajout de la musique:', err);
+    } catch (err: any) {
+      console.error('Erreur lors de l\'ajout de la musique:', err);
       toast({
         title: "Erreur",
-        description: "Impossible d&apos;ajouter la musique. Veuillez vérifier l&apos;URL et réessayer.",
+        description: err.response?.data?.error || "Impossible d'ajouter la musique. Veuillez vérifier l'URL et réessayer.",
         variant: "destructive"
       });
     } finally {
       setIsAddingSong(false);
+      setIsDownloading(false);
     }
   };
 
@@ -1007,15 +1035,15 @@ export default function RoomDetailPage() {
                 <Button 
                   onClick={() => setYoutubeDialogOpen(true)}
                   className={`flex items-center gap-1 ${
-                    audioState.isPlaying
-                      ? "bg-gray-600 hover:bg-gray-700" 
+                    isMusicPlaying
+                      ? "bg-gray-600 hover:bg-gray-700 cursor-not-allowed" 
                       : "bg-violet-600 hover:bg-violet-700"
                   }`}
-                  disabled={isDownloading || audioState.isPlaying}
+                  disabled={isDownloading || isMusicPlaying}
                 >
                   <IconBrandYoutube className="h-4 w-4" />
-                  {audioState.isPlaying
-                    ? "Lecture en cours..."
+                  {isMusicPlaying
+                    ? "Musique en cours..."
                     : "Ajouter une musique"
                   }
                 </Button>
@@ -1178,7 +1206,7 @@ export default function RoomDetailPage() {
                               {message.user?.username || 'Utilisateur inconnu'}
                             </span>
                             <span className="text-xs text-zinc-500">
-                              {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true, locale: fr })}
+                              {format(new Date(message.createdAt), 'HH:mm', { locale: fr })}
                             </span>
                           </div>
                           <p className="text-zinc-300 break-words">{message.content}</p>
@@ -1195,7 +1223,7 @@ export default function RoomDetailPage() {
                 <div className="px-3 py-2 border-t border-zinc-800 text-xs text-zinc-400 italic">
                   {usersTyping.length === 1 ? (
                     <div className="flex items-center">
-                      <span className="mr-1">{usersTyping[0].username} est en train d'écrire</span>
+                      <span className="mr-1">{usersTyping[0].username} est en train d&apos;écrire</span>
                       <span className="flex">
                         <span className="animate-bounce">.</span>
                         <span className="animate-bounce delay-100">.</span>
@@ -1205,7 +1233,7 @@ export default function RoomDetailPage() {
                   ) : (
                     <div className="flex items-center">
                       <span className="mr-1">
-                        {usersTyping.map(u => u.username).join(', ')} sont en train d'écrire
+                        {usersTyping.map(u => u.username).join(', ')} sont en train d&apos;écrire
                       </span>
                       <span className="flex">
                         <span className="animate-bounce">.</span>
@@ -1247,25 +1275,34 @@ export default function RoomDetailPage() {
             <DialogTitle>Ajouter une musique YouTube</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <Input
-              value={youtubeUrl}
-              onChange={(e) => setYoutubeUrl(e.target.value)}
-              placeholder="URL YouTube (ex: https://www.youtube.com/watch?v=...)"
-              className="bg-zinc-800 border-zinc-700"
-              autoFocus
-            />
+            {isMusicPlaying ? (
+              <div className="text-center py-4 text-zinc-400">
+                <p>Une musique est en cours de lecture dans cette room.</p>
+                <p className="mt-2">Veuillez attendre la fin de la musique actuelle avant d&apos;en ajouter une nouvelle.</p>
+              </div>
+            ) : (
+              <Input
+                value={youtubeUrl}
+                onChange={(e) => setYoutubeUrl(e.target.value)}
+                placeholder="URL YouTube (ex: https://www.youtube.com/watch?v=...)"
+                className="bg-zinc-800 border-zinc-700"
+                autoFocus
+              />
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setYoutubeDialogOpen(false)}>
-              Annuler
+              Fermer
             </Button>
-            <Button 
-              onClick={handleAddSong}
-              disabled={isAddingSong || !youtubeUrl.trim()}
-              className="bg-violet-600 hover:bg-violet-700"
-            >
-              {isAddingSong ? 'Ajout en cours...' : 'Ajouter'}
-            </Button>
+            {!isMusicPlaying && (
+              <Button 
+                onClick={handleAddSong}
+                disabled={isAddingSong || !youtubeUrl.trim()}
+                className="bg-violet-600 hover:bg-violet-700"
+              >
+                {isAddingSong ? 'Ajout en cours...' : 'Ajouter'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
