@@ -98,6 +98,41 @@ export default function RoomDetailPage() {
   const [displayedMessages, setDisplayedMessages] = useState<Message[]>([]);
   const messagesPerPage = 7;
 
+  // État pour vérifier si l'utilisateur est l'hôte de la room
+  const [isRoomHost, setIsRoomHost] = useState(false);
+
+  // État pour éviter les notifications en double
+  const [lastNotifications, setLastNotifications] = useState<{
+    roomCreated?: number;
+  }>({});
+
+  // Fonction pour afficher les notifications avec déduplication
+  const showNotification = (type: string, data?: any) => {
+    // Ignorer toutes les notifications sauf les erreurs API et les fermetures de room
+    if (type !== 'api-error' && type !== 'room-closed') {
+      return;
+    }
+    
+    // Afficher uniquement les deux types de notifications autorisés
+    switch (type) {
+      case 'room-closed':
+        toast({
+          title: "Room fermée",
+          description: "Cette room a été fermée par son créateur.",
+          variant: "destructive"
+        });
+        break;
+        
+      case 'api-error':
+        toast({
+          title: "Erreur",
+          description: data || "Une erreur est survenue.",
+          variant: "destructive"
+        });
+        break;
+    }
+  };
+
   // Mettre à jour les messages affichés quand les messages changent
   useEffect(() => {
     if (messages.length > messagesPerPage) {
@@ -117,6 +152,11 @@ export default function RoomDetailPage() {
         setMessages(data.messages);
         setError(null);
         
+        // Vérifier si l'utilisateur est l'hôte de la room
+        if (user && data.creatorId === user.id) {
+          setIsRoomHost(true);
+        }
+        
         // Vérifier si une musique est en cours dans la room
         if (data.currentSong && data.currentSongInfo) {
           try {
@@ -126,10 +166,6 @@ export default function RoomDetailPage() {
             // Vérifier si la musique est toujours en cours
             if (songInfo.endTime && songInfo.endTime > Date.now()) {
               setSongEndTime(songInfo.endTime);
-              toast({
-                title: "Musique en cours",
-                description: "Une musique est déjà en cours de lecture dans cette room.",
-              });
             } else {
               // La musique est terminée
               setCurrentSong(null);
@@ -157,11 +193,7 @@ export default function RoomDetailPage() {
       } catch (err) {
         console.error('Erreur lors du chargement des détails de la room:', err);
         setError('Impossible de charger les détails de la room.');
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger les détails de la room.",
-          variant: "destructive"
-        });
+        showNotification('api-error', "Impossible de charger les détails de la room.");
         
         // Rediriger vers la liste des rooms si la room n'existe pas
         router.push('/room');
@@ -171,12 +203,15 @@ export default function RoomDetailPage() {
     };
 
     fetchRoomDetails();
-  }, [roomId, router, toast]);
+  }, [roomId, router]);
 
   // Connexion à la room via Socket.IO
   useEffect(() => {
     if (socket && socket.isConnected && user && roomId) {
       console.log("Connexion à la room Socket.IO:", roomId);
+      
+      // Variable pour suivre si l'utilisateur vient de créer la room
+      let isCreator = false;
       
       // Rejoindre la room via l'API et Socket.IO simultanément
       const joinRoomAndUpdateState = async () => {
@@ -186,21 +221,23 @@ export default function RoomDetailPage() {
           const updatedRoomData = await roomsApi.joinRoom(roomId);
           console.log("Données reçues après join API:", updatedRoomData);
           
+          // Vérifier si l'utilisateur est le créateur
+          const isCreator = updatedRoomData.creatorId === user.id;
+          setIsRoomHost(isCreator);
+          
           // 2. Mettre à jour l'état avec les données fraîches reçues de l'API
-          setRoom(prevRoom => ({
-            ...updatedRoomData,
-            _lastUpdated: Date.now()
-          }));
+          setRoom(prevRoom => {
+            return {
+              ...updatedRoomData,
+              _lastUpdated: Date.now()
+            };
+          });
           
           // 3. Puis connecter via Socket.IO pour les mises à jour continues
           socket.socket?.emit('join-room', roomId, user.id);
         } catch (error) {
           console.error("Erreur lors de la connexion à la room:", error);
-          toast({
-            title: "Erreur",
-            description: "Impossible de rejoindre la room. Veuillez réessayer.",
-            variant: "destructive"
-          });
+          showNotification('api-error', "Impossible de rejoindre la room. Veuillez réessayer.");
         }
       };
       
@@ -220,12 +257,14 @@ export default function RoomDetailPage() {
           // Mettre à jour directement avec les données complètes
           setRoom(updatedRoom);
           
-          // Afficher une notification seulement si nous ne sommes pas dans la période de grâce
-          if (!suppressNotifications) {
-            toast({
-              title: "Nouvel utilisateur",
-              description: "Un utilisateur a rejoint la room.",
-            });
+          // Les notifications sont gérées par la fonction showNotification
+          // qui vérifie déjà l'état isRoomHost
+          const newUser = updatedRoom.users?.find(u => 
+            !room?.users?.some(existingUser => existingUser.id === u.id)
+          );
+          
+          if (newUser) {
+            showNotification('user-joined', { userId: newUser.id });
           }
         }
       });
@@ -253,13 +292,8 @@ export default function RoomDetailPage() {
             });
           }
           
-          // Afficher une notification seulement si nous ne sommes pas dans la période de grâce
-          if (!suppressNotifications) {
-            toast({
-              title: "Nouvel utilisateur",
-              description: "Un utilisateur a rejoint la room.",
-            });
-          }
+          // Les notifications sont gérées par la fonction showNotification
+          showNotification('user-joined', { userId });
         } catch (error) {
           console.error("Erreur lors de la mise à jour des infos de la room:", error);
         }
@@ -270,15 +304,16 @@ export default function RoomDetailPage() {
         console.log("Données complètes reçues - utilisateur a quitté:", updatedRoom);
         
         if (updatedRoom) {
+          // Trouver l'utilisateur qui est parti
+          const departedUserId = room?.users?.find(u => 
+            !updatedRoom.users?.some(remainingUser => remainingUser.id === u.id)
+          )?.id;
+          
           // Mettre à jour directement avec les données complètes
           setRoom(updatedRoom);
           
-          // Afficher une notification seulement si nous ne sommes pas dans la période de grâce
-          if (!suppressNotifications) {
-            toast({
-              title: "Utilisateur parti",
-              description: "Un utilisateur a quitté la room.",
-            });
+          if (departedUserId) {
+            showNotification('user-left', { userId: departedUserId });
           }
         }
       });
@@ -303,13 +338,7 @@ export default function RoomDetailPage() {
             };
           });
           
-          // Afficher une notification seulement si nous ne sommes pas dans la période de grâce
-          if (!suppressNotifications) {
-            toast({
-              title: "Utilisateur parti",
-              description: "Un utilisateur a quitté la room.",
-            });
-          }
+          showNotification('user-left', { userId });
         } catch (error) {
           console.error("Erreur lors de la mise à jour des infos de la room:", error);
         }
@@ -318,10 +347,6 @@ export default function RoomDetailPage() {
       // Écouter les événements de musique et gérer la synchronisation de la lecture
       socket.socket?.on('song-download-started', () => {
         setIsDownloading(true);
-        toast({
-          title: "Téléchargement",
-          description: "Téléchargement de la musique en cours...",
-        });
       });
       
       // Écouter les informations sur la chanson en cours et le signal de démarrage
@@ -398,11 +423,6 @@ export default function RoomDetailPage() {
             
             // Gérer le cas où le délai est positif (futur)
             if (delay > 0) {
-              toast({
-                title: "Synchronisation",
-                description: `Lecture automatique dans ${Math.ceil(delay/1000)} secondes`,
-              });
-              
               setTimeout(async () => {
                 console.log("Tentative de lecture automatique");
                 
@@ -410,11 +430,7 @@ export default function RoomDetailPage() {
                 
                 if (!success) {
                   // Créer un message pour l'utilisateur
-                  toast({
-                    title: "Interaction requise",
-                    description: "Cliquez sur Play pour démarrer la lecture",
-                    variant: "destructive",
-                  });
+                  showNotification('api-error', "Cliquez sur Play pour démarrer la lecture");
                 }
               }, delay);
             } 
@@ -428,11 +444,7 @@ export default function RoomDetailPage() {
             }
           } catch (error) {
             console.error("Erreur lors de la préparation de l'audio:", error);
-            toast({
-              title: "Erreur",
-              description: "Impossible de lire l'audio",
-              variant: "destructive"
-            });
+            showNotification('api-error', "Impossible de lire l'audio");
           }
         }
       });
@@ -448,30 +460,17 @@ export default function RoomDetailPage() {
         
         // Arrêter le timer manuel
         setManualTimer(prev => ({ ...prev, isActive: false, currentTime: 0 }));
-        
-        toast({
-          title: "Lecture terminée",
-          description: "La chanson est terminée.",
-        });
       });
       
       // Écouter les erreurs de téléchargement
       socket.socket?.on('song-error', (error: { error: string }) => {
         setIsDownloading(false);
-        toast({
-          title: "Erreur",
-          description: `Erreur lors du téléchargement: ${error.error}`,
-          variant: "destructive"
-        });
+        showNotification('api-error', `Erreur lors du téléchargement: ${error.error}`);
       });
       
       // Écouter la fermeture de la room
       socket.socket?.on('room-closed', () => {
-        toast({
-          title: "Room fermée",
-          description: "Cette room a été fermée par son créateur.",
-          variant: "destructive"
-        });
+        showNotification('room-closed');
         router.push('/room');
       });
       
@@ -753,11 +752,7 @@ export default function RoomDetailPage() {
       router.push('/room');
     } catch (err) {
       console.error('Erreur lors de la déconnexion de la room:', err);
-      toast({
-        title: "Erreur",
-        description: "Impossible de quitter la room. Veuillez réessayer.",
-        variant: "destructive"
-      });
+      showNotification('api-error', "Impossible de quitter la room. Veuillez réessayer.");
     }
   };
 
@@ -771,11 +766,7 @@ export default function RoomDetailPage() {
         router.push('/room');
       } catch (err) {
         console.error('Erreur lors de la fermeture de la room:', err);
-        toast({
-          title: "Erreur",
-          description: "Impossible de fermer la room. Veuillez réessayer.",
-          variant: "destructive"
-        });
+        showNotification('api-error', "Impossible de fermer la room. Veuillez réessayer.");
       }
     }
   };
@@ -950,6 +941,43 @@ export default function RoomDetailPage() {
       }
     };
   }, [messageInput, socket, user, roomId]);
+
+  // Gérer la déconnexion automatique quand l'utilisateur quitte la page
+  useEffect(() => {
+    const handleBeforeUnload = async () => {
+      if (user && room) {
+        try {
+          // Si l'utilisateur est le créateur de la room, fermer la room
+          if (room.creatorId === user.id) {
+            await roomsApi.closeRoom(room.id);
+            
+            // Informer les autres utilisateurs via Socket.IO
+            if (socket && socket.socket) {
+              socket.socket.emit('room-closed', room.id);
+            }
+          } else {
+            // Sinon, simplement quitter la room
+            await roomsApi.leaveRoom(room.id);
+            
+            // Informer les autres utilisateurs via Socket.IO
+            if (socket && socket.socket) {
+              socket.socket.emit('leave-room', room.id, user.id);
+            }
+          }
+        } catch (error) {
+          console.error('Erreur lors de la déconnexion automatique:', error);
+        }
+      }
+    };
+
+    // Ajouter l'événement beforeunload
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // Nettoyer l'événement à la destruction du composant
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [user, room, socket]);
 
   if (loading) {
     return (
