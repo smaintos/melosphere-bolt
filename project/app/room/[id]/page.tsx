@@ -94,6 +94,19 @@ export default function RoomDetailPage() {
   // Variable pour suivre si une musique est en cours
   const isMusicPlaying = Boolean(songEndTime && songEndTime > Date.now());
 
+  // Ajouter un état pour la pagination des messages
+  const [displayedMessages, setDisplayedMessages] = useState<Message[]>([]);
+  const messagesPerPage = 7;
+
+  // Mettre à jour les messages affichés quand les messages changent
+  useEffect(() => {
+    if (messages.length > messagesPerPage) {
+      setDisplayedMessages(messages.slice(-messagesPerPage));
+    } else {
+      setDisplayedMessages(messages);
+    }
+  }, [messages]);
+
   // Charger les détails de la room
   useEffect(() => {
     const fetchRoomDetails = async () => {
@@ -679,7 +692,10 @@ export default function RoomDetailPage() {
   // Faire défiler vers le bas lorsque de nouveaux messages arrivent
   useEffect(() => {
     if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      const scrollArea = chatEndRef.current.closest('.scroll-area-viewport');
+      if (scrollArea) {
+        scrollArea.scrollTop = scrollArea.scrollHeight;
+      }
     }
   }, [messages]);
 
@@ -971,256 +987,92 @@ export default function RoomDetailPage() {
 
   return (
     <ProtectedRoute>
-      {/* Bouton retour */}
-      <div className="fixed top-4 left-4 z-50">
-        <Link href="/room">
-          <Button 
-            variant="outline" 
-            className="bg-zinc-900/70 backdrop-blur-sm hover:bg-zinc-800 border border-violet-500/30 text-white"
-          >
-            <IconArrowLeft className="h-4 w-4 mr-2" />
-            Retour
-          </Button>
-        </Link>
-      </div>
-
-      <div className="flex-1 p-4 md:p-8 flex flex-col min-h-screen pt-20 md:pt-24">
-        {/* En-tête de la room */}
-        <div className="flex justify-between items-center mb-6 w-full">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white">{room.name}</h1>
-            <p className="text-zinc-400 text-sm flex items-center mt-1">
-              <span>Créée par {room.creator?.username || 'Utilisateur inconnu'}</span>
-              <span className="mx-2">•</span>
-              <span>
-                {room.createdAt && !isNaN(new Date(room.createdAt).getTime()) 
-                  ? formatDistanceToNow(new Date(room.createdAt), { addSuffix: true, locale: fr })
-                  : 'Date inconnue'
-                }
-              </span>
-            </p>
-          </div>
-          <div className="flex gap-2">
-            {user && room.creatorId === user.id ? (
-              <Button 
-                variant="destructive"
-                onClick={handleCloseRoom}
-                className="flex items-center gap-1"
-              >
-                <IconX className="h-4 w-4" />
-                Fermer
-              </Button>
-            ) : (
-              <Button 
-                variant="outline"
-                onClick={handleLeaveRoom}
-                className="flex items-center gap-1"
-              >
-                <IconDoorExit className="h-4 w-4" />
-                Quitter
-              </Button>
-            )}
-          </div>
+      <div className="h-screen overflow-hidden">
+        {/* Bouton retour */}
+        <div className="fixed top-4 left-4 z-50">
+          <Link href="/room">
+            <Button 
+              variant="outline" 
+              className="bg-zinc-900/70 backdrop-blur-sm hover:bg-zinc-800 border border-violet-500/30 text-white"
+            >
+              <IconArrowLeft className="h-4 w-4 mr-2" />
+              Retour
+            </Button>
+          </Link>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
-          {/* Lecteur audio */}
-          <div className="lg:col-span-2">
-            <Card className="bg-zinc-900/70 border-violet-500/20 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                  <IconMusic className="h-5 w-5 text-violet-400" />
-                  Lecteur
-                </h2>
-                <Button 
-                  onClick={() => setYoutubeDialogOpen(true)}
-                  className={`flex items-center gap-1 ${
-                    isMusicPlaying
-                      ? "bg-gray-600 hover:bg-gray-700 cursor-not-allowed" 
-                      : "bg-violet-600 hover:bg-violet-700"
-                  }`}
-                  disabled={isDownloading || isMusicPlaying}
-                >
-                  <IconBrandYoutube className="h-4 w-4" />
-                  {isMusicPlaying
-                    ? "Musique en cours..."
-                    : "Ajouter une musique"
+        <div className="flex-1 p-4 flex flex-col h-screen pt-16">
+          {/* En-tête de la room */}
+          <div className="flex justify-between items-center mb-4 w-full">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white">{room.name}</h1>
+              <p className="text-zinc-400 text-sm flex items-center mt-1">
+                <span>Créée par {room.creator?.username || 'Utilisateur inconnu'}</span>
+                <span className="mx-2">•</span>
+                <span>
+                  {room.createdAt && !isNaN(new Date(room.createdAt).getTime()) 
+                    ? formatDistanceToNow(new Date(room.createdAt), { addSuffix: true, locale: fr })
+                    : 'Date inconnue'
                   }
+                </span>
+              </p>
+            </div>
+            <div className="flex gap-2">
+              {user && room.creatorId === user.id ? (
+                <Button 
+                  variant="destructive"
+                  onClick={handleCloseRoom}
+                  className="flex items-center gap-1"
+                >
+                  <IconX className="h-4 w-4" />
+                  Fermer
                 </Button>
-              </div>
-
-              {isDownloading ? (
-                <div className="flex flex-col items-center justify-center p-10 bg-zinc-800/50 rounded-lg">
-                  <div className="w-12 h-12 border-4 border-t-violet-500 border-violet-200 rounded-full animate-spin mb-4"></div>
-                  <p className="text-zinc-300">Téléchargement en cours...</p>
-                </div>
-              ) : currentSong ? (
-                <div>
-                  <div className="flex flex-col md:flex-row gap-4 mb-4">
-                    <img 
-                      src={currentSong.thumbnail} 
-                      alt={currentSong.title} 
-                      className="w-full md:w-40 h-auto rounded-md object-cover"
-                    />
-                    <div className="flex-1">
-                      <h3 className="text-lg font-medium text-white line-clamp-2">{currentSong.title}</h3>
-                      <p className="text-zinc-400 mb-2">{currentSong.channel}</p>
-                      <div className="flex items-center gap-2 text-sm text-zinc-500">
-                        <Badge variant="outline" className="bg-zinc-800/50">
-                          {manualTimer.duration > 0 
-                            ? `${Math.floor(manualTimer.duration / 60)}:${String(Math.floor(manualTimer.duration % 60)).padStart(2, '0')}`
-                            : audioState.duration > 0 
-                              ? `${Math.floor(audioState.duration / 60)}:${String(Math.floor(audioState.duration % 60)).padStart(2, '0')}`
-                              : "00:00"}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Interface de lecture avec timer visuel amélioré basé sur le timer manuel */}
-                  <div className="mt-2 mb-5">
-                    <div className="w-full h-3 bg-zinc-800 border border-zinc-700 rounded-full mb-2 overflow-hidden relative">
-                      <div 
-                        className="h-full bg-gradient-to-r from-violet-500 to-violet-700 rounded-full transition-all"
-                        style={{ 
-                          width: `${manualTimer.duration > 0 
-                            ? (manualTimer.currentTime / manualTimer.duration) * 100 
-                            : audioState.duration > 0 
-                              ? (audioState.currentTime / audioState.duration) * 100 
-                              : 0}%` 
-                        }}
-                      ></div>
-                    </div>
-                    
-                    {/* Timer visuel basé sur le timer manuel */}
-                    <div className="flex justify-between text-xs text-zinc-400">
-                      <span className="tabular-nums">
-                        {manualTimer.isActive 
-                          ? `${Math.floor(manualTimer.currentTime / 60)}:${String(Math.floor(manualTimer.currentTime % 60)).padStart(2, '0')}`
-                          : audioState.currentTime > 0 
-                            ? `${Math.floor(audioState.currentTime / 60)}:${String(Math.floor(audioState.currentTime % 60)).padStart(2, '0')}`
-                            : "00:00"}
-                      </span>
-                      <span className="tabular-nums">
-                        {manualTimer.duration > 0 
-                          ? `-${Math.floor((manualTimer.duration - manualTimer.currentTime) / 60)}:${String(Math.floor((manualTimer.duration - manualTimer.currentTime) % 60)).padStart(2, '0')}` 
-                          : audioState.duration > 0 
-                            ? `-${Math.floor((audioState.duration - audioState.currentTime) / 60)}:${String(Math.floor((audioState.duration - audioState.currentTime) % 60)).padStart(2, '0')}` 
-                            : "-00:00"}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {/* Débogage du temps pour voir les valeurs récupérées */}
-                  <div className="hidden">
-                    Timer manuel: {manualTimer.currentTime.toFixed(0)} / {manualTimer.duration.toFixed(0)} | 
-                    Audio: {audioState.currentTime.toFixed(2)} / {audioState.duration.toFixed(2)}
-                  </div>
-                  
-                  {/* Bouton play invisible pour déclenchement automatique */}
-                  <Button 
-                    ref={playButtonRef}
-                    className="hidden"
-                    onClick={() => {
-                      if (audioRef.current) {
-                        if (audioRef.current.paused) {
-                          console.log("Tentative de lecture via le bouton invisible");
-                          audioRef.current.play().catch(err => console.error('Erreur de lecture:', err));
-                        }
-                      }
-                    }}
-                  >
-                    Lire
-                  </Button>
-                  
-                  {/* Élément audio avec preload eager pour assurer le chargement des métadonnées */}
-                  <audio 
-                    ref={audioRef}
-                    className="hidden"
-                    preload="auto"
-                    autoPlay
-                  >
-                    <source src={getFullImageUrl(currentSong?.url)} type="audio/mpeg" />
-                    Votre navigateur ne supporte pas la lecture audio.
-                  </audio>
-                </div>
               ) : (
-                <div className="flex flex-col items-center justify-center p-10 bg-zinc-800/50 rounded-lg">
-                  <IconPlayerPlay className="h-12 w-12 text-zinc-600 mb-4" />
-                  <p className="text-zinc-400 text-center">
-                    Aucune musique en cours de lecture.<br />
-                    Ajoutez une musique pour commencer !
-                  </p>
-                </div>
+                <Button 
+                  variant="outline"
+                  onClick={handleLeaveRoom}
+                  className="flex items-center gap-1"
+                >
+                  <IconDoorExit className="h-4 w-4" />
+                  Quitter
+                </Button>
               )}
-            </Card>
-            
-            {/* Participants */}
-            <Card className="bg-zinc-900/70 border-violet-500/20 p-6 mt-6">
-              <h2 className="text-xl font-semibold text-white flex items-center gap-2 mb-4">
-                <IconUsers className="h-5 w-5 text-violet-400" />
-                Participants ({room.users ? room.users.length : 0})
-              </h2>
-              
-              <div className="flex flex-wrap gap-2">
-                {room.users && room.users.map((roomUser) => (
-                  <Badge key={roomUser.id} variant="outline" className="bg-zinc-800/50 p-1 pl-0.5 pr-2">
-                    <Avatar className="h-6 w-6 mr-1">
-                      <AvatarImage src={getFullImageUrl(roomUser.profilePicture)} alt={roomUser.username} />
-                      <AvatarFallback>{roomUser.username?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
-                    </Avatar>
-                    <span>{roomUser.username}</span>
-                    {room.creatorId === roomUser.id && (
-                      <span className="ml-1 text-xs text-violet-400">(créateur)</span>
-                    )}
-                  </Badge>
-                ))}
-              </div>
-            </Card>
+            </div>
           </div>
-          
-          {/* Chat */}
-          <div className="lg:col-span-1">
-            <Card className="bg-zinc-900/70 border-violet-500/20 h-full flex flex-col">
-              <div className="p-4 border-b border-zinc-800">
-                <h2 className="text-xl font-semibold text-white">Chat</h2>
-              </div>
-              
-              <ScrollArea className="flex-1 p-4">
-                {!messages || messages.length === 0 ? (
-                  <div className="text-center py-8 text-zinc-500">
-                    <p>Aucun message.</p>
-                    <p>Soyez le premier à écrire !</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {messages.map((message) => (
-                      <div key={message.id} className="flex gap-3">
-                        <Avatar className="h-8 w-8">
+
+          <div className="flex gap-6 w-full">
+            {/* Chat à gauche */}
+            <div className="w-96 flex flex-col h-[calc(100vh-12rem)]">
+              <div className="flex-1 overflow-hidden flex flex-col justify-end">
+                <ScrollArea className="w-full">
+                  <div className="p-2 space-y-2">
+                    {displayedMessages.map((message) => (
+                      <div key={message.id} className="flex gap-2">
+                        <Avatar className="h-6 w-6">
                           <AvatarImage src={getFullImageUrl(message.user?.profilePicture)} alt={message.user?.username || 'Utilisateur'} />
                           <AvatarFallback>{message.user?.username?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-white">
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium text-white text-sm">
                               {message.user?.username || 'Utilisateur inconnu'}
                             </span>
                             <span className="text-xs text-zinc-500">
                               {format(new Date(message.createdAt), 'HH:mm', { locale: fr })}
                             </span>
                           </div>
-                          <p className="text-zinc-300 break-words">{message.content}</p>
+                          <p className="text-zinc-300 text-sm break-words">{message.content}</p>
                         </div>
                       </div>
                     ))}
                     <div ref={chatEndRef} />
                   </div>
-                )}
-              </ScrollArea>
-              
-              {/* Indicateur de frappe avec effet visuel amélioré */}
+                </ScrollArea>
+              </div>
+
+              {/* Indicateur de frappe */}
               {usersTyping.length > 0 && (
-                <div className="px-3 py-2 border-t border-zinc-800 text-xs text-zinc-400 italic">
+                <div className="px-2 py-1 text-xs text-zinc-400 italic">
                   {usersTyping.length === 1 ? (
                     <div className="flex items-center">
                       <span className="mr-1">{usersTyping[0].username} est en train d&apos;écrire</span>
@@ -1244,30 +1096,179 @@ export default function RoomDetailPage() {
                   )}
                 </div>
               )}
-              
-              <div className="p-3 border-t border-zinc-800">
+
+              {/* Zone de saisie */}
+              <div className="p-2 border-t border-zinc-800">
                 <div className="flex gap-2">
                   <Input
                     placeholder="Écrivez un message..."
                     value={messageInput}
                     onChange={(e) => setMessageInput(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                    className="bg-zinc-800 border-zinc-700"
+                    className="bg-zinc-800/50 border-zinc-700 w-full h-9"
                   />
                   <Button 
                     onClick={handleSendMessage}
-                    className="bg-violet-600 hover:bg-violet-700"
+                    className="bg-violet-600 hover:bg-violet-700 h-9 px-3"
                     disabled={!messageInput.trim()}
                   >
                     <IconSend className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-            </Card>
+            </div>
+
+            {/* Lecteur audio au centre */}
+            <div className="flex-1">
+              <Card className="bg-zinc-900/70 border-violet-500/20 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                    <IconMusic className="h-5 w-5 text-violet-400" />
+                    Lecteur
+                  </h2>
+                  <Button 
+                    onClick={() => setYoutubeDialogOpen(true)}
+                    className={`flex items-center gap-1 ${
+                      isMusicPlaying
+                        ? "bg-gray-600 hover:bg-gray-700 cursor-not-allowed" 
+                        : "bg-violet-600 hover:bg-violet-700"
+                    }`}
+                    disabled={isDownloading || isMusicPlaying}
+                  >
+                    <IconBrandYoutube className="h-4 w-4" />
+                    {isMusicPlaying
+                      ? "Musique en cours..."
+                      : "Ajouter une musique"
+                    }
+                  </Button>
+                </div>
+
+                {isDownloading ? (
+                  <div className="flex flex-col items-center justify-center p-10 bg-zinc-800/50 rounded-lg">
+                    <div className="w-12 h-12 border-4 border-t-violet-500 border-violet-200 rounded-full animate-spin mb-4"></div>
+                    <p className="text-zinc-300">Téléchargement en cours...</p>
+                  </div>
+                ) : currentSong ? (
+                  <div>
+                    <div className="flex flex-col md:flex-row gap-4 mb-4">
+                      <img 
+                        src={currentSong.thumbnail} 
+                        alt={currentSong.title} 
+                        className="w-full md:w-40 h-auto rounded-md object-cover"
+                      />
+                      <div className="flex-1">
+                        <h3 className="text-lg font-medium text-white line-clamp-2">{currentSong.title}</h3>
+                        <p className="text-zinc-400 mb-2">{currentSong.channel}</p>
+                        <div className="flex items-center gap-2 text-sm text-zinc-500">
+                          <Badge variant="outline" className="bg-zinc-800/50">
+                            {manualTimer.duration > 0 
+                              ? `${Math.floor(manualTimer.duration / 60)}:${String(Math.floor(manualTimer.duration % 60)).padStart(2, '0')}`
+                              : audioState.duration > 0 
+                                ? `${Math.floor(audioState.duration / 60)}:${String(Math.floor(audioState.duration % 60)).padStart(2, '0')}`
+                                : "00:00"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Interface de lecture */}
+                    <div className="mt-2 mb-5">
+                      <div className="w-full h-3 bg-zinc-800 border border-zinc-700 rounded-full mb-2 overflow-hidden relative">
+                        <div 
+                          className="h-full bg-gradient-to-r from-violet-500 to-violet-700 rounded-full transition-all"
+                          style={{ 
+                            width: `${manualTimer.duration > 0 
+                              ? (manualTimer.currentTime / manualTimer.duration) * 100 
+                              : audioState.duration > 0 
+                                ? (audioState.currentTime / audioState.duration) * 100 
+                                : 0}%` 
+                          }}
+                        ></div>
+                      </div>
+                      
+                      {/* Timer */}
+                      <div className="flex justify-between text-xs text-zinc-400">
+                        <span className="tabular-nums">
+                          {manualTimer.isActive 
+                            ? `${Math.floor(manualTimer.currentTime / 60)}:${String(Math.floor(manualTimer.currentTime % 60)).padStart(2, '0')}`
+                            : audioState.currentTime > 0 
+                              ? `${Math.floor(audioState.currentTime / 60)}:${String(Math.floor(audioState.currentTime % 60)).padStart(2, '0')}`
+                              : "00:00"}
+                        </span>
+                        <span className="tabular-nums">
+                          {manualTimer.duration > 0 
+                            ? `-${Math.floor((manualTimer.duration - manualTimer.currentTime) / 60)}:${String(Math.floor((manualTimer.duration - manualTimer.currentTime) % 60)).padStart(2, '0')}` 
+                            : audioState.duration > 0 
+                              ? `-${Math.floor((audioState.duration - audioState.currentTime) / 60)}:${String(Math.floor((audioState.duration - audioState.currentTime) % 60)).padStart(2, '0')}` 
+                              : "-00:00"}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Bouton play invisible */}
+                    <Button 
+                      ref={playButtonRef}
+                      className="hidden"
+                      onClick={() => {
+                        if (audioRef.current) {
+                          if (audioRef.current.paused) {
+                            console.log("Tentative de lecture via le bouton invisible");
+                            audioRef.current.play().catch(err => console.error('Erreur de lecture:', err));
+                          }
+                        }
+                      }}
+                    >
+                      Lire
+                    </Button>
+                    
+                    {/* Élément audio */}
+                    <audio 
+                      ref={audioRef}
+                      className="hidden"
+                      preload="auto"
+                      autoPlay
+                    >
+                      <source src={getFullImageUrl(currentSong?.url)} type="audio/mpeg" />
+                      Votre navigateur ne supporte pas la lecture audio.
+                    </audio>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-10 bg-zinc-800/50 rounded-lg">
+                    <IconPlayerPlay className="h-12 w-12 text-zinc-600 mb-4" />
+                    <p className="text-zinc-400 text-center">
+                      Aucune musique en cours de lecture.<br />
+                      Ajoutez une musique pour commencer !
+                    </p>
+                  </div>
+                )}
+              </Card>
+            </div>
+
+            {/* Participants à droite */}
+            <div className="w-64">
+              <div className="space-y-4">
+                {room.users && room.users.map((roomUser) => (
+                  <div key={roomUser.id} className="flex flex-col items-center">
+                    <div className="relative">
+                      <Avatar className="h-24 w-24 animate-float">
+                        <AvatarImage src={getFullImageUrl(roomUser.profilePicture)} alt={roomUser.username} />
+                        <AvatarFallback>{roomUser.username?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
+                      </Avatar>
+                      {room.creatorId === roomUser.id && (
+                        <div className="absolute -top-2 -right-2 bg-violet-500 rounded-full p-1">
+                          <IconUsers className="h-4 w-4 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-white font-medium mt-2">{roomUser.username}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      
+
       {/* Dialogue pour ajouter une musique YouTube */}
       <Dialog open={youtubeDialogOpen} onOpenChange={setYoutubeDialogOpen}>
         <DialogContent className="bg-zinc-900 border-violet-500/20">
