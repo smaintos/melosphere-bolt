@@ -31,7 +31,7 @@ import {
   IconVolume
 } from '@tabler/icons-react';
 import Link from 'next/link';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { getFullImageUrl } from '@/lib/utils';
 
@@ -84,6 +84,16 @@ export default function RoomDetailPage() {
     isActive: false
   });
 
+  // Ajouter un état pour suivre qui est en train d'écrire
+  const [usersTyping, setUsersTyping] = useState<{id: number, username: string}[]>([]);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Ajouter un état pour suivre le temps de fin de la musique
+  const [songEndTime, setSongEndTime] = useState<number | null>(null);
+
+  // Variable pour suivre si une musique est en cours
+  const isMusicPlaying = Boolean(songEndTime && songEndTime > Date.now());
+
   // Charger les détails de la room
   useEffect(() => {
     const fetchRoomDetails = async () => {
@@ -93,6 +103,29 @@ export default function RoomDetailPage() {
         setRoom(data);
         setMessages(data.messages);
         setError(null);
+        
+        // Vérifier si une musique est en cours dans la room
+        if (data.currentSong && data.currentSongInfo) {
+          try {
+            const songInfo = JSON.parse(data.currentSongInfo);
+            setCurrentSong(songInfo);
+            
+            // Vérifier si la musique est toujours en cours
+            if (songInfo.endTime && songInfo.endTime > Date.now()) {
+              setSongEndTime(songInfo.endTime);
+              toast({
+                title: "Musique en cours",
+                description: "Une musique est déjà en cours de lecture dans cette room.",
+              });
+            } else {
+              // La musique est terminée
+              setCurrentSong(null);
+              setSongEndTime(null);
+            }
+          } catch (error) {
+            console.error('Erreur lors du parsing des informations de la musique:', error);
+          }
+        }
         
         // Vérifier si la room vient d'être créée (moins de 5 secondes)
         const roomCreationTime = new Date(data.createdAt).getTime();
@@ -283,6 +316,7 @@ export default function RoomDetailPage() {
         console.log("Signal de lecture reçu:", songInfo);
         setIsDownloading(false);
         setCurrentSong(songInfo);
+        setSongEndTime(songInfo.endTime);
         
         // Récupérer la durée directement depuis les données de la chanson
         const songDuration = songInfo.duration || 0;
@@ -393,6 +427,7 @@ export default function RoomDetailPage() {
       // Écouter la fin de la chanson
       socket.socket?.on('song-ended', () => {
         setCurrentSong(null);
+        setSongEndTime(null);
         if (audioRef.current) {
           audioRef.current.pause();
           audioRef.current.currentTime = 0;
@@ -442,7 +477,35 @@ export default function RoomDetailPage() {
         }
       }, 10000); // Synchroniser toutes les 10 secondes
       
-      // Nettoyage à la déconnexion
+      // Ajouter les écouteurs pour le "typing indicator"
+      socket.socket?.on('user-typing', ({userId, username}: {userId: number, username: string}) => {
+        // Ne pas ajouter notre propre indication de frappe
+        if (userId === user.id) return;
+        
+        console.log("Utilisateur en train d'écrire:", username, userId);
+        
+        setUsersTyping(prev => {
+          // Vérifier si cet utilisateur est déjà dans la liste
+          const alreadyTyping = prev.some(u => u.id === userId);
+          if (alreadyTyping) return prev;
+          
+          const newState = [...prev, {id: userId, username}];
+          console.log("Liste mise à jour des utilisateurs qui écrivent:", newState);
+          return newState;
+        });
+      });
+      
+      socket.socket?.on('user-stop-typing', (userId: number) => {
+        console.log("Utilisateur a arrêté d'écrire:", userId);
+        
+        setUsersTyping(prev => {
+          const newState = prev.filter(u => u.id !== userId);
+          console.log("Liste mise à jour des utilisateurs qui écrivent après arrêt:", newState);
+          return newState;
+        });
+      });
+      
+      // Nettoyer à la déconnexion
       return () => {
         console.log("Déconnexion de la room Socket.IO:", roomId);
         socket.socket?.emit('leave-room', roomId, user.id);
@@ -457,6 +520,8 @@ export default function RoomDetailPage() {
         socket.socket?.off('song-error');
         socket.socket?.off('room-closed');
         socket.socket?.off('playback-sync');
+        socket.socket?.off('user-typing');
+        socket.socket?.off('user-stop-typing');
         if (syncTimerRef.current) {
           clearInterval(syncTimerRef.current);
         }
@@ -639,32 +704,29 @@ export default function RoomDetailPage() {
   const handleAddSong = async () => {
     if (!youtubeUrl.trim() || !room) return;
     
-    // Vérifier si une musique est déjà en cours de lecture
-    if (currentSong && audioState.isPlaying) {
-      toast({
-        title: "Lecture en cours",
-        description: "Une musique est déjà en cours de lecture. Attendez la fin ou mettez en pause avant d'ajouter une nouvelle musique.",
-        variant: "destructive"
-      });
-      setYoutubeDialogOpen(false);
-      return;
-    }
-    
     try {
       setIsAddingSong(true);
       setYoutubeDialogOpen(false);
       
+      // Afficher immédiatement l'état de téléchargement
+      setIsDownloading(true);
+      toast({
+        title: "Téléchargement",
+        description: "Téléchargement de la musique en cours...",
+      });
+      
       await roomsApi.playYoutubeVideo(roomId, youtubeUrl);
       setYoutubeUrl('');
-    } catch (err) {
-      console.error('Erreur lors de l&apos;ajout de la musique:', err);
+    } catch (err: any) {
+      console.error('Erreur lors de l\'ajout de la musique:', err);
       toast({
         title: "Erreur",
-        description: "Impossible d&apos;ajouter la musique. Veuillez vérifier l&apos;URL et réessayer.",
+        description: err.response?.data?.error || "Impossible d'ajouter la musique. Veuillez vérifier l'URL et réessayer.",
         variant: "destructive"
       });
     } finally {
       setIsAddingSong(false);
+      setIsDownloading(false);
     }
   };
 
@@ -810,6 +872,69 @@ export default function RoomDetailPage() {
     };
   }, [manualTimer.isActive]);
 
+  // Modifier l'effet de frappe pour corriger les problèmes de type
+  useEffect(() => {
+    // Seulement si l'utilisateur a commencé à taper quelque chose
+    if (messageInput.trim().length > 0 && socket && socket.isConnected && user && roomId) {
+      // Obtenir le nom d'utilisateur à partir de l'objet user
+      let username = 'Utilisateur'; // Valeur par défaut
+      // Accéder aux propriétés de façon sécurisée avec le type 'any' pour éviter les erreurs
+      const userAny = user as any;
+      if (userAny && typeof userAny === 'object') {
+        if (userAny.username) {
+          username = userAny.username;
+        } else if (userAny.name) {
+          username = userAny.name;
+        } else if (userAny.email) {
+          username = userAny.email.split('@')[0]; // Utiliser la partie avant @ comme nom d'utilisateur
+        }
+      }
+      
+      console.log("Émission du signal de frappe:", roomId, user.id, username);
+      
+      // Émettre l'événement "user-typing" avec un objet conforme à ce que le serveur attend
+      socket.socket?.emit('user-typing', {
+        roomId: roomId,
+        userId: user.id,
+        username: username
+      });
+      
+      // Nettoyer le timer précédent si existant
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Définir un délai après lequel nous considérons que l'utilisateur a arrêté de taper
+      typingTimeoutRef.current = setTimeout(() => {
+        console.log("Émission du signal d'arrêt de frappe:", roomId, user.id);
+        socket.socket?.emit('user-stop-typing', {
+          roomId: roomId,
+          userId: user.id
+        });
+      }, 2000); // 2 secondes d'inactivité = arrêt de frappe
+    } else if (messageInput.trim().length === 0 && socket && socket.isConnected && user && roomId) {
+      // Si l'utilisateur efface tout, signaler immédiatement l'arrêt de frappe
+      console.log("Émission du signal d'arrêt de frappe (après effacement):", roomId, user.id);
+      socket.socket?.emit('user-stop-typing', {
+        roomId: roomId,
+        userId: user.id
+      });
+      
+      // Nettoyer le timer
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+    }
+    
+    // Nettoyer le timer lors du démontage
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, [messageInput, socket, user, roomId]);
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
@@ -910,15 +1035,15 @@ export default function RoomDetailPage() {
                 <Button 
                   onClick={() => setYoutubeDialogOpen(true)}
                   className={`flex items-center gap-1 ${
-                    audioState.isPlaying
-                      ? "bg-gray-600 hover:bg-gray-700" 
+                    isMusicPlaying
+                      ? "bg-gray-600 hover:bg-gray-700 cursor-not-allowed" 
                       : "bg-violet-600 hover:bg-violet-700"
                   }`}
-                  disabled={isDownloading || audioState.isPlaying}
+                  disabled={isDownloading || isMusicPlaying}
                 >
                   <IconBrandYoutube className="h-4 w-4" />
-                  {audioState.isPlaying
-                    ? "Lecture en cours..."
+                  {isMusicPlaying
+                    ? "Musique en cours..."
                     : "Ajouter une musique"
                   }
                 </Button>
@@ -1081,7 +1206,7 @@ export default function RoomDetailPage() {
                               {message.user?.username || 'Utilisateur inconnu'}
                             </span>
                             <span className="text-xs text-zinc-500">
-                              {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true, locale: fr })}
+                              {format(new Date(message.createdAt), 'HH:mm', { locale: fr })}
                             </span>
                           </div>
                           <p className="text-zinc-300 break-words">{message.content}</p>
@@ -1092,6 +1217,33 @@ export default function RoomDetailPage() {
                   </div>
                 )}
               </ScrollArea>
+              
+              {/* Indicateur de frappe avec effet visuel amélioré */}
+              {usersTyping.length > 0 && (
+                <div className="px-3 py-2 border-t border-zinc-800 text-xs text-zinc-400 italic">
+                  {usersTyping.length === 1 ? (
+                    <div className="flex items-center">
+                      <span className="mr-1">{usersTyping[0].username} est en train d&apos;écrire</span>
+                      <span className="flex">
+                        <span className="animate-bounce">.</span>
+                        <span className="animate-bounce delay-100">.</span>
+                        <span className="animate-bounce delay-200">.</span>
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <span className="mr-1">
+                        {usersTyping.map(u => u.username).join(', ')} sont en train d&apos;écrire
+                      </span>
+                      <span className="flex">
+                        <span className="animate-bounce">.</span>
+                        <span className="animate-bounce delay-100">.</span>
+                        <span className="animate-bounce delay-200">.</span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
               
               <div className="p-3 border-t border-zinc-800">
                 <div className="flex gap-2">
@@ -1123,25 +1275,34 @@ export default function RoomDetailPage() {
             <DialogTitle>Ajouter une musique YouTube</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <Input
-              value={youtubeUrl}
-              onChange={(e) => setYoutubeUrl(e.target.value)}
-              placeholder="URL YouTube (ex: https://www.youtube.com/watch?v=...)"
-              className="bg-zinc-800 border-zinc-700"
-              autoFocus
-            />
+            {isMusicPlaying ? (
+              <div className="text-center py-4 text-zinc-400">
+                <p>Une musique est en cours de lecture dans cette room.</p>
+                <p className="mt-2">Veuillez attendre la fin de la musique actuelle avant d&apos;en ajouter une nouvelle.</p>
+              </div>
+            ) : (
+              <Input
+                value={youtubeUrl}
+                onChange={(e) => setYoutubeUrl(e.target.value)}
+                placeholder="URL YouTube (ex: https://www.youtube.com/watch?v=...)"
+                className="bg-zinc-800 border-zinc-700"
+                autoFocus
+              />
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setYoutubeDialogOpen(false)}>
-              Annuler
+              Fermer
             </Button>
-            <Button 
-              onClick={handleAddSong}
-              disabled={isAddingSong || !youtubeUrl.trim()}
-              className="bg-violet-600 hover:bg-violet-700"
-            >
-              {isAddingSong ? 'Ajout en cours...' : 'Ajouter'}
-            </Button>
+            {!isMusicPlaying && (
+              <Button 
+                onClick={handleAddSong}
+                disabled={isAddingSong || !youtubeUrl.trim()}
+                className="bg-violet-600 hover:bg-violet-700"
+              >
+                {isAddingSong ? 'Ajout en cours...' : 'Ajouter'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
