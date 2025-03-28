@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import Image from "next/image";
 
 import { useToast } from "@/components/ui/use-toast";
 import { Room } from '@/lib/types';
@@ -203,7 +204,9 @@ export default function RoomPage() {
                         <AvatarImage src={getFullImageUrl(room.creator?.profilePicture)} alt={room.creator?.username || 'Utilisateur'} />
                         <AvatarFallback>{room.creator?.username?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
                       </Avatar>
-                      <span className="text-sm text-zinc-400">Créée par {room.creator?.username || 'Utilisateur inconnu'}</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm text-zinc-400">{room.creator?.username || 'Utilisateur inconnu'}</span>
+                      </div>
                     </div>
                     <Badge variant="outline" className="w-fit flex items-center gap-1 bg-zinc-800/50">
                       <IconUsers className="h-3 w-3" />

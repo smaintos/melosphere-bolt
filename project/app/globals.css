@@ -2,7 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-
+/* Masquer la barre de défilement de la page principale */
+body {
+  overflow: hidden;
+}
 
 :root {
   --background: 0 0% 100%;
