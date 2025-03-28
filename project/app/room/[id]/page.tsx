@@ -373,8 +373,8 @@ export default function RoomDetailPage() {
         
         if (audioRef.current) {
           try {
-            // Préparer l'audio avec le chemin correct
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://87.106.162.205:5001';
+            // Préparer l'audio avec le chemin correct - utiliser l'URL directe
+            const apiUrl = 'http://87.106.162.205:5001';
             const audioUrl = `${apiUrl}${songInfo.url}`;
             console.log("Chargement de l'audio depuis:", audioUrl);
             
@@ -718,26 +718,65 @@ export default function RoomDetailPage() {
 
   // Ajouter une musique depuis YouTube
   const handleAddSong = async () => {
-    if (!youtubeUrl.trim() || !room) return;
+    if (!youtubeUrl.trim() || isAddingSong || isMusicPlaying) return;
+    
+    setIsAddingSong(true);
+    setYoutubeDialogOpen(false);
     
     try {
-      setIsAddingSong(true);
-      setYoutubeDialogOpen(false);
-      
-      // Afficher immédiatement l'état de téléchargement
       setIsDownloading(true);
-      toast({
-        title: "Téléchargement",
-        description: "Téléchargement de la musique en cours...",
-      });
       
-      await roomsApi.playYoutubeVideo(roomId, youtubeUrl);
-      setYoutubeUrl('');
-    } catch (err: any) {
-      console.error('Erreur lors de l\'ajout de la musique:', err);
+      // Utiliser directement l'URL complète du serveur API
+      const apiUrl = 'http://87.106.162.205:5001';
+      try {
+        const response = await fetch(`${apiUrl}/api/rooms/${roomId}/play`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ videoUrl: youtubeUrl })
+        });
+        
+        // Vérifier si la réponse est bien formatée en JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error('Réponse non-JSON reçue:', await response.text());
+          throw new Error('Le serveur a renvoyé une réponse non-JSON');
+        }
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          // Vérifier si l'erreur est due à une musique déjà en lecture
+          if (response.status === 409) {
+            toast({
+              title: "Musique en cours",
+              description: "Une musique est déjà en cours de lecture dans cette room. Attendez qu'elle se termine.",
+              variant: "destructive"
+            });
+          } else {
+            throw new Error(data.error || 'Erreur lors de l\'ajout de la musique');
+          }
+        } else {
+          // Réinitialiser l'URL
+          setYoutubeUrl('');
+        }
+      } catch (apiError) {
+        console.error('Erreur détaillée:', apiError);
+        throw apiError;
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout de la musique:', error);
+      
+      // Afficher plus de détails sur l'erreur pour le débogage
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Erreur lors de l'ajout de la musique";
+      
       toast({
         title: "Erreur",
-        description: err.response?.data?.error || "Impossible d'ajouter la musique. Veuillez vérifier l'URL et réessayer.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -979,6 +1018,114 @@ export default function RoomDetailPage() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [user, room, socket]);
+
+  useEffect(() => {
+    if (!socket || !user || !roomId) return;
+    
+    // Requête pour vérifier l'état de lecture actuel au chargement
+    const checkCurrentPlayback = async () => {
+      try {
+        const apiUrl = 'http://87.106.162.205:5001';
+        const response = await fetch(`${apiUrl}/api/rooms/${roomId}/music-state`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        // Vérifier si la réponse est bien formatée en JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error('Réponse non-JSON reçue:', await response.text());
+          throw new Error('Le serveur a renvoyé une réponse non-JSON');
+        }
+        
+        const data = await response.json();
+        
+        if (data.playing && data.songInfo) {
+          console.log("Musique en cours détectée:", data.songInfo.title);
+          console.log("Position actuelle:", data.currentPosition, "secondes");
+          
+          setCurrentSong({
+            title: data.songInfo.title,
+            channel: data.songInfo.channel,
+            thumbnail: data.songInfo.thumbnail,
+            url: data.songInfo.url,
+            duration: data.songInfo.duration,
+            id: data.songInfo.videoId || 'unknown',
+            videoId: data.songInfo.videoId || 'unknown',
+            addedAt: data.songInfo.addedAt || Date.now()
+          });
+          
+          setSongEndTime(Date.now() + (data.remainingTime * 1000));
+          
+          // Si nous avons une référence audio, définir la position actuelle
+          if (audioRef.current) {
+            audioRef.current.currentTime = data.currentPosition;
+            audioRef.current.play().catch(err => console.error('Erreur de lecture:', err));
+          } else {
+            // Stocker la position pour l'appliquer quand l'audio sera prêt
+            setManualTimer({
+              isActive: true,
+              currentTime: data.currentPosition,
+              duration: data.songInfo.duration
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Erreur lors de la vérification de l'état de lecture:", error);
+      }
+    };
+    
+    // Vérifier l'état de lecture actuel au chargement
+    checkCurrentPlayback();
+    
+    // Gérer le cas où un utilisateur rejoint pendant la lecture
+    socket.socket?.on('join-during-playback', (data) => {
+      console.log("Rejoindre pendant la lecture:", data);
+      
+      const { songInfo, currentTime, timeRemaining } = data;
+      
+      setCurrentSong({
+        title: songInfo.title,
+        channel: songInfo.channel,
+        thumbnail: songInfo.thumbnail,
+        url: songInfo.url,
+        duration: songInfo.duration,
+        id: songInfo.videoId || 'unknown',
+        videoId: songInfo.videoId || 'unknown',
+        addedAt: songInfo.addedAt || Date.now()
+      });
+      
+      setSongEndTime(Date.now() + (timeRemaining * 1000));
+      
+      // Si nous avons une référence audio, définir la position actuelle
+      if (audioRef.current) {
+        audioRef.current.currentTime = currentTime;
+        audioRef.current.play().catch(err => console.error('Erreur de lecture:', err));
+      } else {
+        // Stocker la position pour l'appliquer quand l'audio sera prêt
+        setManualTimer({
+          isActive: true,
+          currentTime: currentTime,
+          duration: songInfo.duration
+        });
+      }
+    });
+    
+    // Écouter l'événement de fin de chanson
+    socket.socket?.on('song-ended', (data) => {
+      console.log("Chanson terminée:", data);
+      setSongEndTime(null);
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    });
+    
+    return () => {
+      socket.socket?.off('join-during-playback');
+      socket.socket?.off('song-ended');
+    };
+  }, [socket, user, roomId]);
 
   if (loading) {
     return (
