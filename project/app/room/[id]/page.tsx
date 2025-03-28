@@ -34,6 +34,7 @@ import Link from 'next/link';
 import { formatDistanceToNow, format, addHours } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { getFullImageUrl } from '@/lib/utils';
+import Image from 'next/image';
 
 export default function RoomDetailPage() {
   const { id } = useParams();
@@ -1015,13 +1016,40 @@ export default function RoomDetailPage() {
 
   return (
     <ProtectedRoute>
-      <div className="h-screen overflow-hidden">
+      <div className="h-screen overflow-hidden relative">
+        {/* Fond animé */}
+        <div className="fixed inset-0 z-0 bg-black overflow-hidden">
+          <div className="absolute w-full h-full opacity-30 animate-nebula-move">
+            <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-gradient-to-tr from-violet-600/40 to-indigo-900/30 blur-xl animate-pulse-slow"></div>
+            <div className="absolute bottom-1/3 right-1/4 w-80 h-80 rounded-full bg-gradient-to-bl from-indigo-600/30 to-violet-900/40 blur-xl animate-float"></div>
+            <div className="absolute top-2/3 right-1/3 w-72 h-72 rounded-full bg-gradient-to-br from-purple-600/30 to-violet-900/40 blur-xl animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
+            <div className="absolute bottom-1/4 right-1/2 w-64 h-64 rounded-full bg-gradient-to-r from-fuchsia-600/20 to-purple-900/30 blur-xl animate-float" style={{ animationDelay: '4s' }}></div>
+            <div className="absolute top-1/2 right-1/4 w-48 h-48 rounded-full bg-gradient-to-l from-violet-600/30 to-indigo-900/40 blur-xl animate-pulse-slow" style={{ animationDelay: '3s' }}></div>
+          </div>
+           
+          {/* Image de mesh géante en rotation */}
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <div className="w-[1500px] h-[1500px] flex items-center justify-center animate-spin-mega-slow">
+              <Image 
+                src="https://img.icons8.com/dotty/80/ffffff/mesh.png" 
+                alt="mesh"
+                width={1500}
+                height={1500}
+                className="opacity-75 drop-shadow-[0_0_50px_rgba(139,92,246,1)] filter hue-rotate-[270deg]"
+                priority
+              />
+            </div>
+          </div>
+           
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-[30px] z-20"></div>
+        </div>
+
         {/* Bouton retour */}
         <div className="fixed top-4 left-4 z-50">
           <Link href="/room">
             <Button 
               variant="outline" 
-              className="bg-zinc-900/70 backdrop-blur-sm hover:bg-zinc-800 border border-violet-500/30 text-white"
+              className="bg-zinc-900/90 backdrop-blur-sm hover:bg-zinc-800 border border-violet-500/30 text-white"
             >
               <IconArrowLeft className="h-4 w-4 mr-2" />
               Retour
@@ -1029,7 +1057,7 @@ export default function RoomDetailPage() {
           </Link>
         </div>
 
-        <div className="flex-1 p-4 flex flex-col h-screen pt-16">
+        <div className="flex-1 p-4 flex flex-col h-screen pt-16 relative z-30">
           {/* En-tête de la room */}
           <div className="flex justify-between items-center mb-4 w-full">
             <div>
@@ -1136,90 +1164,103 @@ export default function RoomDetailPage() {
               </div>
             </div>
 
-            {/* Lecteur audio au centre */}
-            <div className="flex-1">
-              <Card className="bg-zinc-900/70 border-violet-500/20 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                    <IconMusic className="h-5 w-5 text-violet-400" />
-                    Lecteur
-                  </h2>
-                  <Button 
-                    onClick={() => setYoutubeDialogOpen(true)}
-                    className={`flex items-center gap-1 ${
-                      isMusicPlaying
-                        ? "bg-gray-600 hover:bg-gray-700 cursor-not-allowed" 
-                        : "bg-violet-600 hover:bg-violet-700"
-                    }`}
-                    disabled={isDownloading || isMusicPlaying}
-                  >
-                    <IconBrandYoutube className="h-4 w-4" />
-                    {isMusicPlaying
-                      ? "Musique en cours..."
-                      : "Ajouter une musique"
-                    }
-                  </Button>
+            {/* Lecteur audio au centre avec bouton mesh flottant */}
+            <div className="flex-1 relative">
+              {/* Bouton mesh flottant pour ajouter une musique */}
+              <button 
+                onClick={() => setYoutubeDialogOpen(true)}
+                disabled={isDownloading || isMusicPlaying}
+                className={`absolute top-0 right-4 z-20 ${
+                  isMusicPlaying || isDownloading
+                    ? "opacity-50 cursor-not-allowed" 
+                    : "opacity-100 hover:scale-110 transition-all duration-300"
+                }`}
+                title="Ajouter une musique"
+              >
+                <div className="relative w-16 h-16 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-violet-600/50 rounded-full animate-pulse-slow"></div>
+                  <div className="animate-spin-slow">
+                    <Image 
+                      src="https://img.icons8.com/dotty/80/ffffff/mesh.png" 
+                      alt="Ajouter une musique"
+                      width={45}
+                      height={45}
+                      className="filter hue-rotate-[270deg] drop-shadow-[0_0_8px_rgba(139,92,246,1)]"
+                    />
+                  </div>
                 </div>
+              </button>
+
+              <div className={`p-4 backdrop-blur-sm ${
+                currentSong 
+                  ? "bg-zinc-900/60 border border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.2)]" 
+                  : "bg-zinc-900/40"
+                } rounded-lg transition-all duration-300`}>
+                <h2 className="text-xl font-semibold text-white flex items-center gap-2 mb-4">
+                  <IconMusic className="h-5 w-5 text-violet-400" />
+                  Lecteur
+                </h2>
 
                 {isDownloading ? (
-                  <div className="flex flex-col items-center justify-center p-10 bg-zinc-800/50 rounded-lg">
-                    <div className="w-12 h-12 border-4 border-t-violet-500 border-violet-200 rounded-full animate-spin mb-4"></div>
-                    <p className="text-zinc-300">Téléchargement en cours...</p>
+                  <div className="flex flex-col items-center justify-center p-10 bg-zinc-900/80 backdrop-blur-md rounded-lg">
+                    <div className="w-16 h-16 border-4 border-t-violet-500 border-violet-200/20 rounded-full animate-spin mb-4"></div>
+                    <p className="text-violet-300 font-medium text-lg">Téléchargement en cours...</p>
+                    <p className="text-zinc-400 mt-2 text-sm">Préparation de votre musique</p>
                   </div>
                 ) : currentSong ? (
                   <div>
-                    <div className="flex flex-col md:flex-row gap-4 mb-4">
-                      <img 
-                        src={currentSong.thumbnail} 
-                        alt={currentSong.title} 
-                        className="w-full md:w-40 h-auto rounded-md object-cover"
-                      />
-                      <div className="flex-1">
-                        <h3 className="text-lg font-medium text-white line-clamp-2">{currentSong.title}</h3>
-                        <p className="text-zinc-400 mb-2">{currentSong.channel}</p>
-                        <div className="flex items-center gap-2 text-sm text-zinc-500">
-                          <Badge variant="outline" className="bg-zinc-800/50">
-                            {manualTimer.duration > 0 
-                              ? `${Math.floor(manualTimer.duration / 60)}:${String(Math.floor(manualTimer.duration % 60)).padStart(2, '0')}`
-                              : audioState.duration > 0 
-                                ? `${Math.floor(audioState.duration / 60)}:${String(Math.floor(audioState.duration % 60)).padStart(2, '0')}`
-                                : "00:00"}
-                          </Badge>
+                    <div className="flex flex-col md:flex-row gap-6 mb-6">
+                      <div className="relative group">
+                        <img 
+                          src={currentSong.thumbnail} 
+                          alt={currentSong.title} 
+                          className="w-full md:w-48 h-auto rounded-md object-cover shadow-lg border border-violet-500/20 transition-transform transform group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center p-3">
+                          <p className="text-xs text-white truncate">{currentSong.channel}</p>
                         </div>
                       </div>
-                    </div>
-                    
-                    {/* Interface de lecture */}
-                    <div className="mt-2 mb-5">
-                      <div className="w-full h-3 bg-zinc-800 border border-zinc-700 rounded-full mb-2 overflow-hidden relative">
-                        <div 
-                          className="h-full bg-gradient-to-r from-violet-500 to-violet-700 rounded-full transition-all"
-                          style={{ 
-                            width: `${manualTimer.duration > 0 
-                              ? (manualTimer.currentTime / manualTimer.duration) * 100 
-                              : audioState.duration > 0 
-                                ? (audioState.currentTime / audioState.duration) * 100 
-                                : 0}%` 
-                          }}
-                        ></div>
-                      </div>
-                      
-                      {/* Timer */}
-                      <div className="flex justify-between text-xs text-zinc-400">
-                        <span className="tabular-nums">
-                          {manualTimer.isActive 
-                            ? `${Math.floor(manualTimer.currentTime / 60)}:${String(Math.floor(manualTimer.currentTime % 60)).padStart(2, '0')}`
-                            : audioState.currentTime > 0 
-                              ? `${Math.floor(audioState.currentTime / 60)}:${String(Math.floor(audioState.currentTime % 60)).padStart(2, '0')}`
-                              : "00:00"}
-                        </span>
-                        <span className="tabular-nums">
-                          {manualTimer.duration > 0 
-                            ? `-${Math.floor((manualTimer.duration - manualTimer.currentTime) / 60)}:${String(Math.floor((manualTimer.duration - manualTimer.currentTime) % 60)).padStart(2, '0')}` 
-                            : audioState.duration > 0 
-                              ? `-${Math.floor((audioState.duration - audioState.currentTime) / 60)}:${String(Math.floor((audioState.duration - audioState.currentTime) % 60)).padStart(2, '0')}` 
-                              : "-00:00"}
-                        </span>
+                      <div className="flex-1 space-y-3 flex flex-col justify-between">
+                        <div>
+                          <h3 className="text-xl font-medium text-white line-clamp-2">{currentSong.title}</h3>
+                          <p className="text-violet-300 mt-1">{currentSong.channel}</p>
+                        </div>
+                        
+                        {/* Interface de lecture */}
+                        <div className="mt-auto backdrop-blur-sm bg-zinc-900/40 p-3 rounded-md">
+                          <div className="w-full h-3 bg-zinc-800/80 rounded-full mb-2 overflow-hidden relative group">
+                            <div 
+                              className="h-full bg-gradient-to-r from-violet-500 to-violet-700 rounded-full transition-all group-hover:from-violet-400 group-hover:to-violet-600"
+                              style={{ 
+                                width: `${manualTimer.duration > 0 
+                                  ? (manualTimer.currentTime / manualTimer.duration) * 100 
+                                  : audioState.duration > 0 
+                                    ? (audioState.currentTime / audioState.duration) * 100 
+                                    : 0}%` 
+                              }}
+                            >
+                              <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-glow opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            </div>
+                          </div>
+                          
+                          {/* Timer */}
+                          <div className="flex justify-between text-xs text-zinc-400">
+                            <span className="tabular-nums font-medium">
+                              {manualTimer.isActive 
+                                ? `${Math.floor(manualTimer.currentTime / 60)}:${String(Math.floor(manualTimer.currentTime % 60)).padStart(2, '0')}`
+                                : audioState.currentTime > 0 
+                                  ? `${Math.floor(audioState.currentTime / 60)}:${String(Math.floor(audioState.currentTime % 60)).padStart(2, '0')}`
+                                  : "00:00"}
+                            </span>
+                            <span className="tabular-nums font-medium">
+                              {manualTimer.duration > 0 
+                                ? `${Math.floor(manualTimer.duration / 60)}:${String(Math.floor(manualTimer.duration % 60)).padStart(2, '0')}` 
+                                : audioState.duration > 0 
+                                  ? `${Math.floor(audioState.duration / 60)}:${String(Math.floor(audioState.duration % 60)).padStart(2, '0')}` 
+                                  : "00:00"}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     
@@ -1251,15 +1292,19 @@ export default function RoomDetailPage() {
                     </audio>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center p-10 bg-zinc-800/50 rounded-lg">
-                    <IconPlayerPlay className="h-12 w-12 text-zinc-600 mb-4" />
-                    <p className="text-zinc-400 text-center">
-                      Aucune musique en cours de lecture.<br />
-                      Ajoutez une musique pour commencer !
+                  <div className="flex flex-col items-center justify-center p-12 bg-zinc-900/40 backdrop-blur-md rounded-lg">
+                    <div className="w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center mb-6 animate-pulse">
+                      <IconPlayerPlay className="h-10 w-10 text-violet-400" />
+                    </div>
+                    <p className="text-white text-center text-lg font-medium">
+                      Aucune musique en cours de lecture
+                    </p>
+                    <p className="text-zinc-400 text-center mt-2">
+                      Cliquez sur l&apos;icône mesh pour ajouter une musique
                     </p>
                   </div>
                 )}
-              </Card>
+              </div>
             </div>
 
             {/* Participants à droite */}
@@ -1295,37 +1340,84 @@ export default function RoomDetailPage() {
 
       {/* Dialogue pour ajouter une musique YouTube */}
       <Dialog open={youtubeDialogOpen} onOpenChange={setYoutubeDialogOpen}>
-        <DialogContent className="bg-zinc-900 border-violet-500/20">
-          <DialogHeader>
-            <DialogTitle>Ajouter une musique YouTube</DialogTitle>
+        <DialogContent className="bg-zinc-900/95 backdrop-blur-xl border-violet-500/30 max-w-md">
+          <DialogHeader className="flex items-center justify-center mb-2">
+            <div className="w-16 h-16 relative flex items-center justify-center mb-2">
+              <div className="absolute inset-0 bg-violet-600/20 rounded-full animate-pulse-slow"></div>
+              <Image 
+                src="https://img.icons8.com/dotty/80/ffffff/mesh.png" 
+                alt="mesh"
+                width={50}
+                height={50}
+                className="animate-spin-slow filter hue-rotate-[270deg] drop-shadow-[0_0_8px_rgba(139,92,246,1)]"
+              />
+            </div>
+            <DialogTitle className="text-xl font-bold text-white">
+              Ajouter une musique
+            </DialogTitle>
           </DialogHeader>
           <div className="py-4">
             {isMusicPlaying ? (
-              <div className="text-center py-4 text-zinc-400">
-                <p>Une musique est en cours de lecture dans cette room.</p>
-                <p className="mt-2">Veuillez attendre la fin de la musique actuelle avant d&apos;en ajouter une nouvelle.</p>
+              <div className="text-center py-6 space-y-4">
+                <div className="w-16 h-16 mx-auto bg-zinc-800 rounded-full flex items-center justify-center">
+                  <IconPlayerPlay className="h-8 w-8 text-violet-400" />
+                </div>
+                <p className="text-white font-medium">Une musique est en cours de lecture</p>
+                <p className="text-zinc-400 text-sm">
+                  Veuillez attendre la fin de la musique actuelle avant d&apos;en ajouter une nouvelle.
+                </p>
               </div>
             ) : (
-              <Input
-                value={youtubeUrl}
-                onChange={(e) => setYoutubeUrl(e.target.value)}
-                placeholder="URL YouTube (ex: https://www.youtube.com/watch?v=...)"
-                className="bg-zinc-800 border-zinc-700"
-                autoFocus
-              />
+              <div className="space-y-4">
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400">
+                    <IconBrandYoutube className="h-5 w-5 text-red-500" />
+                  </div>
+                  <Input
+                    value={youtubeUrl}
+                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                    placeholder="Collez l&apos;URL YouTube ici"
+                    className="bg-zinc-800 border-zinc-700 pl-10 pr-4 py-6 text-white"
+                    autoFocus
+                  />
+                </div>
+                <div className="bg-zinc-800/50 rounded-md p-3 text-sm text-zinc-400">
+                  <p>Formats acceptés :</p>
+                  <ul className="list-disc pl-5 mt-1 space-y-1">
+                    <li>https://www.youtube.com/watch?v=XXXX</li>
+                    <li>https://youtu.be/XXXX</li>
+                  </ul>
+                </div>
+              </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setYoutubeDialogOpen(false)}>
-              Fermer
+          <DialogFooter className="flex justify-between sm:justify-between gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setYoutubeDialogOpen(false)}
+              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+            >
+              Annuler
             </Button>
             {!isMusicPlaying && (
               <Button 
                 onClick={handleAddSong}
                 disabled={isAddingSong || !youtubeUrl.trim()}
-                className="bg-violet-600 hover:bg-violet-700"
+                className={`bg-violet-600 hover:bg-violet-700 transition-all ${
+                  youtubeUrl.trim() ? 'opacity-100' : 'opacity-70'
+                }`}
               >
-                {isAddingSong ? 'Ajout en cours...' : 'Ajouter'}
+                {isAddingSong ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2" />
+                    Ajout en cours...
+                  </>
+                ) : (
+                  <>
+                    <IconMusic className="h-4 w-4 mr-2" />
+                    Ajouter
+                  </>
+                )}
               </Button>
             )}
           </DialogFooter>
