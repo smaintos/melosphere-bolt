@@ -36,6 +36,9 @@ import { fr } from 'date-fns/locale';
 import { getFullImageUrl } from '@/lib/utils';
 import Image from 'next/image';
 
+// Fonction utilitaire pour obtenir l'URL de l'API
+const getApiUrl = () => process.env.NEXT_PUBLIC_API_URL || 'http://87.106.162.205:5001';
+
 export default function RoomDetailPage() {
   const { id } = useParams();
   const roomId = Array.isArray(id) ? id[0] : id;
@@ -374,7 +377,7 @@ export default function RoomDetailPage() {
         if (audioRef.current) {
           try {
             // Préparer l'audio avec le chemin correct - utiliser l'URL directe
-            const apiUrl = 'http://87.106.162.205:5001';
+            const apiUrl = getApiUrl();
             const audioUrl = `${apiUrl}${songInfo.url}`;
             console.log("Chargement de l'audio depuis:", audioUrl);
             
@@ -727,7 +730,7 @@ export default function RoomDetailPage() {
       setIsDownloading(true);
       
       // Utiliser directement l'URL complète du serveur API
-      const apiUrl = 'http://87.106.162.205:5001';
+      const apiUrl = getApiUrl();
       try {
         const response = await fetch(`${apiUrl}/api/rooms/${roomId}/play`, {
           method: 'POST',
@@ -1025,7 +1028,7 @@ export default function RoomDetailPage() {
     // Requête pour vérifier l'état de lecture actuel au chargement
     const checkCurrentPlayback = async () => {
       try {
-        const apiUrl = 'http://87.106.162.205:5001';
+        const apiUrl = getApiUrl();
         const response = await fetch(`${apiUrl}/api/rooms/${roomId}/music-state`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
