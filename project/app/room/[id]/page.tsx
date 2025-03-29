@@ -115,6 +115,9 @@ export default function RoomDetailPage() {
     roomCreated?: number;
   }>({});
 
+  // Ajouter un état pour la modal de confirmation de fermeture
+  const [closeRoomDialogOpen, setCloseRoomDialogOpen] = useState(false);
+
   // Fonction pour afficher les notifications avec déduplication
   const showNotification = (type: string, data?: any) => {
     // Ignorer toutes les notifications sauf les erreurs API et les fermetures de room
@@ -819,14 +822,20 @@ export default function RoomDetailPage() {
   const handleCloseRoom = async () => {
     if (!room || !user || room.creatorId !== user.id) return;
     
-    if (confirm('Êtes-vous sûr de vouloir fermer cette room ? Tous les utilisateurs seront déconnectés.')) {
-      try {
-        await roomsApi.closeRoom(roomId);
-        router.push('/room');
-      } catch (err) {
-        console.error('Erreur lors de la fermeture de la room:', err);
-        showNotification('api-error', "Impossible de fermer la room. Veuillez réessayer.");
-      }
+    // Ouvrir la modale de confirmation au lieu d'utiliser confirm
+    setCloseRoomDialogOpen(true);
+  };
+  
+  // Fonction pour confirmer et exécuter la fermeture de la room
+  const confirmCloseRoom = async () => {
+    try {
+      await roomsApi.closeRoom(roomId);
+      setCloseRoomDialogOpen(false);
+      router.push('/room');
+    } catch (err) {
+      console.error('Erreur lors de la fermeture de la room:', err);
+      showNotification('api-error', "Impossible de fermer la room. Veuillez réessayer.");
+      setCloseRoomDialogOpen(false);
     }
   };
 
@@ -1640,6 +1649,45 @@ export default function RoomDetailPage() {
                 )}
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialogue pour confirmer la fermeture de la room */}
+      <Dialog open={closeRoomDialogOpen} onOpenChange={setCloseRoomDialogOpen}>
+        <DialogContent className="bg-zinc-900/95 backdrop-blur-xl border-violet-500/30 max-w-md">
+          <DialogHeader className="flex items-center justify-center mb-2">
+            <div className="w-16 h-16 relative flex items-center justify-center mb-2">
+              <div className="absolute inset-0 bg-red-600/20 rounded-full animate-pulse-slow"></div>
+              <IconX className="h-10 w-10 text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.7)]" />
+            </div>
+            <DialogTitle className="text-xl font-bold text-white">
+              Fermer la room
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="text-center py-2 space-y-4">
+              <p className="text-white font-medium">Êtes-vous sûr de vouloir fermer cette room ?</p>
+              <p className="text-zinc-400 text-sm">
+                Tous les utilisateurs seront déconnectés et la room sera supprimée définitivement.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="flex justify-between sm:justify-between gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setCloseRoomDialogOpen(false)}
+              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+            >
+              Annuler
+            </Button>
+            <Button 
+              onClick={confirmCloseRoom}
+              className="bg-red-600 hover:bg-red-700 transition-all"
+            >
+              <IconX className="h-4 w-4 mr-2" />
+              Fermer la room
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

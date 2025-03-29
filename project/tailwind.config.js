@@ -134,6 +134,12 @@ module.exports = {
         "nebula-move": "nebula-move 30s ease-in-out infinite",
         "progress-indeterminate": "progress-indeterminate 1.5s ease-in-out infinite",
       },
+      boxShadow: {
+        // ... existing shadows ...
+      },
+      dropShadow: {
+        'glow': '0 0 8px rgba(139, 92, 246, 0.7)',
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],
