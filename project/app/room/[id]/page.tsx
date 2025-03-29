@@ -28,13 +28,15 @@ import {
   IconUsers,
   IconDoorExit,
   IconX,
-  IconVolume
+  IconVolume,
+  IconPlaneTilt
 } from '@tabler/icons-react';
 import Link from 'next/link';
 import { formatDistanceToNow, format, addHours } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { getFullImageUrl } from '@/lib/utils';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
 
 // Fonction utilitaire pour obtenir l'URL de l'API
 const getApiUrl = () => process.env.NEXT_PUBLIC_API_URL || 'http://87.106.162.205:5001';
@@ -97,6 +99,9 @@ export default function RoomDetailPage() {
 
   // Variable pour suivre si une musique est en cours
   const isMusicPlaying = Boolean(songEndTime && songEndTime > Date.now());
+
+  // Ajouter un état pour suivre l'ID de l'utilisateur qui a partagé la chanson en cours
+  const [currentSongSharerId, setCurrentSongSharerId] = useState<number | null>(null);
 
   // Ajouter un état pour la pagination des messages
   const [displayedMessages, setDisplayedMessages] = useState<Message[]>([]);
@@ -360,6 +365,13 @@ export default function RoomDetailPage() {
         setCurrentSong(songInfo);
         setSongEndTime(songInfo.endTime);
         
+        // Stocker l'ID de l'utilisateur qui a partagé la chanson
+        if (songInfo.userId) {
+          setCurrentSongSharerId(songInfo.userId);
+        } else {
+          setCurrentSongSharerId(null);
+        }
+        
         // Récupérer la durée directement depuis les données de la chanson
         const songDuration = songInfo.duration || 0;
         console.log("⏱️ Durée extraite du signal:", songDuration);
@@ -457,6 +469,7 @@ export default function RoomDetailPage() {
       socket.socket?.on('song-ended', () => {
         setCurrentSong(null);
         setSongEndTime(null);
+        setCurrentSongSharerId(null);
         if (audioRef.current) {
           audioRef.current.pause();
           audioRef.current.currentTime = 0;
@@ -738,7 +751,10 @@ export default function RoomDetailPage() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           },
-          body: JSON.stringify({ videoUrl: youtubeUrl })
+          body: JSON.stringify({ 
+            videoUrl: youtubeUrl,
+            userId: user?.id // Ajouter l'ID de l'utilisateur actuel
+          })
         });
         
         // Vérifier si la réponse est bien formatée en JSON
@@ -1059,6 +1075,11 @@ export default function RoomDetailPage() {
             addedAt: data.songInfo.addedAt || Date.now()
           });
           
+          // Stocker l'ID de l'utilisateur qui a partagé la chanson
+          if (data.songInfo.userId) {
+            setCurrentSongSharerId(data.songInfo.userId);
+          }
+          
           setSongEndTime(Date.now() + (data.remainingTime * 1000));
           
           // Si nous avons une référence audio, définir la position actuelle
@@ -1098,6 +1119,11 @@ export default function RoomDetailPage() {
         videoId: songInfo.videoId || 'unknown',
         addedAt: songInfo.addedAt || Date.now()
       });
+      
+      // Stocker l'ID de l'utilisateur qui a partagé la chanson
+      if (songInfo.userId) {
+        setCurrentSongSharerId(songInfo.userId);
+      }
       
       setSongEndTime(Date.now() + (timeRemaining * 1000));
       
@@ -1195,7 +1221,7 @@ export default function RoomDetailPage() {
         </div>
 
         {/* Bouton retour */}
-        <div className="fixed top-4 left-4 z-50">
+        <div className="fixed top-2 left-2 z-50">
           <Link href="/room">
             <Button 
               variant="outline" 
@@ -1207,12 +1233,12 @@ export default function RoomDetailPage() {
           </Link>
         </div>
 
-        <div className="flex-1 p-4 flex flex-col h-screen pt-16 relative z-30">
+        <div className="flex-1 p-2 flex flex-col h-screen pt-12 relative z-30">
           {/* En-tête de la room */}
-          <div className="flex justify-between items-center mb-4 w-full">
+          <div className="flex justify-between items-center mb-2 w-full">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-white">{room.name}</h1>
-              <p className="text-zinc-400 text-sm flex items-center mt-1">
+              <p className="text-zinc-400 text-sm flex items-center">
                 <span>{room.creator?.username || 'Utilisateur inconnu'} est le king de la sphere !</span>
               </p>
             </div>
@@ -1239,9 +1265,9 @@ export default function RoomDetailPage() {
             </div>
           </div>
 
-          <div className="flex gap-6 w-full">
+          <div className="flex gap-4 w-full">
             {/* Chat à gauche */}
-            <div className="w-96 flex flex-col h-[calc(100vh-12rem)]">
+            <div className="w-96 flex flex-col h-[calc(100vh-9rem)]">
               <div className="flex-1 overflow-hidden flex flex-col justify-end">
                 <ScrollArea className="w-full">
                   <div className="p-2 space-y-2">
@@ -1314,151 +1340,179 @@ export default function RoomDetailPage() {
               </div>
             </div>
 
-            {/* Lecteur audio au centre avec bouton mesh flottant */}
-            <div className="flex-1 relative">
-              {/* Bouton mesh flottant pour ajouter une musique */}
-              <button 
-                onClick={() => setYoutubeDialogOpen(true)}
-                disabled={isDownloading || isMusicPlaying}
-                className={`absolute top-0 right-4 z-20 ${
-                  isMusicPlaying || isDownloading
-                    ? "opacity-50 cursor-not-allowed" 
-                    : "opacity-100 hover:scale-110 transition-all duration-300"
-                }`}
-                title="Ajouter une musique"
-              >
-                <div className="relative w-16 h-16 flex items-center justify-center">
-                  <div className="absolute inset-0 bg-violet-600/50 rounded-full animate-pulse-slow"></div>
-                  <div className="animate-spin-slow">
-                    <Image 
-                      src="https://img.icons8.com/dotty/80/ffffff/mesh.png" 
-                      alt="Ajouter une musique"
-                      width={45}
-                      height={45}
-                      className="filter hue-rotate-[270deg] drop-shadow-[0_0_8px_rgba(139,92,246,1)]"
-                    />
+            {/* Lecteur audio minimaliste et flottant */}
+            <div className="flex-1 relative flex justify-center mt-0">
+              {isDownloading ? (
+                <div className="self-center flex flex-col items-center justify-center -mt-4">
+                  {/* Élément similaire au bouton mesh mais non cliquable */}
+                  <div className="relative mb-6">
+                    <div className="relative w-60 h-60 flex items-center justify-center">
+                      <div className="absolute inset-0 bg-violet-600/10 rounded-full animate-pulse-slow"></div>
+                      <div className="animate-spin-slow">
+                        <Image 
+                          src="https://img.icons8.com/dotty/80/ffffff/mesh.png" 
+                          alt="Téléchargement en cours"
+                          width={120}
+                          height={120}
+                          className="filter hue-rotate-[270deg] drop-shadow-[0_0_15px_rgba(139,92,246,1)] opacity-50"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Barre de progression */}
+                  <div className="w-60 h-2 bg-zinc-800/80 rounded-full overflow-hidden relative">
+                    <div className="h-full bg-gradient-to-r from-violet-400 via-violet-600 to-indigo-500 animate-progress-indeterminate"></div>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 mt-4">
+                    <p className="text-violet-300 font-medium text-lg">Envoyer dans la melosphere...</p>
+                    <IconPlaneTilt className="h-5 w-5 text-violet-300" />
                   </div>
                 </div>
-              </button>
-
-              <div className={`p-4 backdrop-blur-sm ${
-                currentSong 
-                  ? "bg-zinc-900/60 border border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.2)]" 
-                  : "bg-zinc-900/40"
-                } rounded-lg transition-all duration-300`}>
-                <h2 className="text-xl font-semibold text-white flex items-center gap-2 mb-4">
-                  <IconMusic className="h-5 w-5 text-violet-400" />
-                  Lecteur
-                </h2>
-
-                {isDownloading ? (
-                  <div className="flex flex-col items-center justify-center p-10 bg-zinc-900/80 backdrop-blur-md rounded-lg">
-                    <div className="w-16 h-16 border-4 border-t-violet-500 border-violet-200/20 rounded-full animate-spin mb-4"></div>
-                    <p className="text-violet-300 font-medium text-lg">Téléchargement en cours...</p>
-                    <p className="text-zinc-400 mt-2 text-sm">Préparation de votre musique</p>
-                  </div>
-                ) : currentSong ? (
-                  <div>
-                    <div className="flex flex-col md:flex-row gap-6 mb-6">
-                      <div className="relative group">
-                        <img 
+              ) : currentSong ? (
+                <div className="self-center max-w-4xl w-full -mt-4">
+                  <div className="backdrop-blur-md bg-zinc-900/20 rounded-xl overflow-hidden border border-violet-500/20 shadow-[0_0_25px_rgba(139,92,246,0.15)]">
+                    <div className="relative w-full group overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/90 z-10"></div>
+                      
+                      {/* Image avec animation de rotation */}
+                      <div className="relative h-96 overflow-hidden flex justify-center items-center">
+                        <motion.img 
                           src={currentSong.thumbnail} 
                           alt={currentSong.title} 
-                          className="w-full md:w-48 h-auto rounded-md object-cover shadow-lg border border-violet-500/20 transition-transform transform group-hover:scale-105"
+                          className="w-full h-full object-cover absolute inset-0"
+                          initial={false}
+                          animate={{
+                            scale: [1, 1.05, 1],
+                          }}
+                          transition={{
+                            duration: 10,
+                            ease: "easeInOut",
+                            repeat: Infinity,
+                          }}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center p-3">
-                          <p className="text-xs text-white truncate">{currentSong.channel}</p>
+                        
+                        {/* Notes de musique flottantes retirées d'ici */}
+                      </div>
+                      
+                      <div className="absolute bottom-0 left-0 right-0 p-6 z-20">
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 rounded-full bg-violet-600/80 flex items-center justify-center animate-pulse">
+                            <IconMusic className="h-7 w-7 text-white" />
+                          </div>
+                          <div className="flex-1 overflow-hidden">
+                            <h3 className="text-3xl font-medium text-white truncate animate-marquee tracking-wide">{currentSong.title}</h3>
+                            <p className="text-violet-300 text-xl truncate">{currentSong.channel}</p>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex-1 space-y-3 flex flex-col justify-between">
-                        <div>
-                          <h3 className="text-xl font-medium text-white line-clamp-2">{currentSong.title}</h3>
-                          <p className="text-violet-300 mt-1">{currentSong.channel}</p>
+                    </div>
+                    
+                    {/* Interface de lecture avec effets lumineux */}
+                    <div className="px-10 py-6 bg-black/30">
+                      <div className="w-full h-5 bg-zinc-800/80 rounded-full overflow-hidden relative group">
+                        <div 
+                          className="h-full bg-gradient-to-r from-violet-400 via-violet-600 to-indigo-500 rounded-full transition-all group-hover:via-fuchsia-500"
+                          style={{ 
+                            width: `${manualTimer.duration > 0 
+                              ? (manualTimer.currentTime / manualTimer.duration) * 100 
+                              : audioState.duration > 0 
+                                ? (audioState.currentTime / audioState.duration) * 100 
+                                : 0}%` 
+                          }}
+                        >
+                          <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-5 h-5 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.8)] opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         </div>
                         
-                        {/* Interface de lecture */}
-                        <div className="mt-auto backdrop-blur-sm bg-zinc-900/40 p-3 rounded-md">
-                          <div className="w-full h-3 bg-zinc-800/80 rounded-full mb-2 overflow-hidden relative group">
-                            <div 
-                              className="h-full bg-gradient-to-r from-violet-500 to-violet-700 rounded-full transition-all group-hover:from-violet-400 group-hover:to-violet-600"
-                              style={{ 
-                                width: `${manualTimer.duration > 0 
-                                  ? (manualTimer.currentTime / manualTimer.duration) * 100 
-                                  : audioState.duration > 0 
-                                    ? (audioState.currentTime / audioState.duration) * 100 
-                                    : 0}%` 
-                              }}
-                            >
-                              <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-glow opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            </div>
-                          </div>
-                          
-                          {/* Timer */}
-                          <div className="flex justify-between text-xs text-zinc-400">
-                            <span className="tabular-nums font-medium">
-                              {manualTimer.isActive 
-                                ? `${Math.floor(manualTimer.currentTime / 60)}:${String(Math.floor(manualTimer.currentTime % 60)).padStart(2, '0')}`
-                                : audioState.currentTime > 0 
-                                  ? `${Math.floor(audioState.currentTime / 60)}:${String(Math.floor(audioState.currentTime % 60)).padStart(2, '0')}`
-                                  : "00:00"}
-                            </span>
-                            <span className="tabular-nums font-medium">
-                              {manualTimer.duration > 0 
-                                ? `${Math.floor(manualTimer.duration / 60)}:${String(Math.floor(manualTimer.duration % 60)).padStart(2, '0')}` 
-                                : audioState.duration > 0 
-                                  ? `${Math.floor(audioState.duration / 60)}:${String(Math.floor(audioState.duration % 60)).padStart(2, '0')}` 
-                                  : "00:00"}
-                            </span>
-                          </div>
+                        {/* Anneaux lumineux animés sur la barre */}
+                        <div className="absolute inset-0 overflow-hidden opacity-30">
+                          <div className="absolute h-10 w-10 -left-5 top-1/2 transform -translate-y-1/2 bg-violet-500/40 rounded-full animate-ping-slow"></div>
+                          <div className="absolute h-8 w-8 -left-4 top-1/2 transform -translate-y-1/2 bg-fuchsia-500/30 rounded-full animate-ping-slow" style={{ animationDelay: '1.5s' }}></div>
                         </div>
                       </div>
+                      
+                      {/* Timer */}
+                      <div className="flex justify-between text-lg text-zinc-300 mt-5 px-2">
+                        <span className="tabular-nums font-medium">
+                          {manualTimer.isActive 
+                            ? `${Math.floor(manualTimer.currentTime / 60)}:${String(Math.floor(manualTimer.currentTime % 60)).padStart(2, '0')}`
+                            : audioState.currentTime > 0 
+                              ? `${Math.floor(audioState.currentTime / 60)}:${String(Math.floor(audioState.currentTime % 60)).padStart(2, '0')}`
+                              : "00:00"}
+                        </span>
+                        <span className="tabular-nums font-medium">
+                          {manualTimer.duration > 0 
+                            ? `${Math.floor(manualTimer.duration / 60)}:${String(Math.floor(manualTimer.duration % 60)).padStart(2, '0')}` 
+                            : audioState.duration > 0 
+                              ? `${Math.floor(audioState.duration / 60)}:${String(Math.floor(audioState.duration % 60)).padStart(2, '0')}` 
+                              : "00:00"}
+                        </span>
+                      </div>
                     </div>
-                    
-                    {/* Bouton play invisible */}
-                    <Button 
-                      ref={playButtonRef}
-                      className="hidden"
-                      onClick={() => {
-                        if (audioRef.current) {
-                          if (audioRef.current.paused) {
-                            console.log("Tentative de lecture via le bouton invisible");
-                            audioRef.current.play().catch(err => console.error('Erreur de lecture:', err));
-                          }
+                  </div>
+                  
+                  {/* Bouton play invisible */}
+                  <Button 
+                    ref={playButtonRef}
+                    className="hidden"
+                    onClick={() => {
+                      if (audioRef.current) {
+                        if (audioRef.current.paused) {
+                          console.log("Tentative de lecture via le bouton invisible");
+                          audioRef.current.play().catch(err => console.error('Erreur de lecture:', err));
                         }
-                      }}
-                    >
-                      Lire
-                    </Button>
-                    
-                    {/* Élément audio */}
-                    <audio 
-                      ref={audioRef}
-                      className="hidden"
-                      preload="auto"
-                      autoPlay
-                    >
-                      <source src={getFullImageUrl(currentSong?.url)} type="audio/mpeg" />
-                      Votre navigateur ne supporte pas la lecture audio.
-                    </audio>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center p-12 bg-zinc-900/40 backdrop-blur-md rounded-lg">
-                    <div className="w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center mb-6 animate-pulse">
-                      <IconPlayerPlay className="h-10 w-10 text-violet-400" />
+                      }
+                    }}
+                  >
+                    Lire
+                  </Button>
+                  
+                  {/* Élément audio */}
+                  <audio 
+                    ref={audioRef}
+                    className="hidden"
+                    preload="auto"
+                    autoPlay
+                  >
+                    <source src={getFullImageUrl(currentSong?.url)} type="audio/mpeg" />
+                    Votre navigateur ne supporte pas la lecture audio.
+                  </audio>
+                </div>
+              ) : (
+                <div className="self-center flex flex-col items-center justify-center -mt-4">
+                  {/* Bouton mesh pour ajouter une musique */}
+                  <button 
+                    onClick={() => setYoutubeDialogOpen(true)}
+                    disabled={isDownloading}
+                    className="relative mb-6 hover:scale-110 transition-all duration-300"
+                    title="Ajouter une musique"
+                  >
+                    <div className="relative w-60 h-60 flex items-center justify-center">
+                      <div className="absolute inset-0 bg-violet-600/10 rounded-full animate-pulse-slow"></div>
+                      <div className="animate-spin-slow">
+                        <Image 
+                          src="https://img.icons8.com/dotty/80/ffffff/mesh.png" 
+                          alt="Ajouter une musique"
+                          width={120}
+                          height={120}
+                          className="filter hue-rotate-[270deg] drop-shadow-[0_0_15px_rgba(139,92,246,1)]"
+                        />
+                      </div>
                     </div>
-                    <p className="text-white text-center text-lg font-medium">
-                      Aucune musique en cours de lecture
-                    </p>
-                    <p className="text-zinc-400 text-center mt-2">
-                      Cliquez sur l&apos;icône mesh pour ajouter une musique
-                    </p>
-                  </div>
-                )}
-              </div>
+                  </button>
+                  
+                  <p className="text-white text-center text-xl font-medium tracking-wide">
+                    Aucune musique en cours
+                  </p>
+                  <p className="text-violet-300/80 text-center mt-2 max-w-xs">
+                    Cliquez sur l&apos;icône <span className="text-white">mesh</span> pour ajouter une musique à partager
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Participants à droite */}
-            <div className="w-64 h-[calc(100vh-12rem)]">
+            <div className="w-64 h-[calc(100vh-9rem)]">
               <ScrollArea className="h-full pr-2">
                 <div className="grid grid-cols-1 sm:grid-cols-1 gap-4 p-1 pt-6 pb-4">
                   {room.users && room.users.length > 0 && (
@@ -1466,17 +1520,33 @@ export default function RoomDetailPage() {
                       {room.users.map((roomUser) => (
                         <div key={roomUser.id} className="flex flex-col items-center py-4">
                           <div className="relative">
+                            {/* Suppression du cercle violet animé */}
                             <Avatar className="h-20 w-20 animate-float border-2 border-violet-500/30">
                               <AvatarImage src={getFullImageUrl(roomUser.profilePicture)} alt={roomUser.username} />
                               <AvatarFallback>{roomUser.username?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
                             </Avatar>
                             {room.creatorId === roomUser.id && (
-                              <div className="absolute -top-2 -right-2 bg-violet-500 rounded-full p-1">
+                              <div className="absolute -top-2 -right-2 bg-violet-500 rounded-full p-1 z-20">
                                 <IconUsers className="h-4 w-4 text-white" />
                               </div>
                             )}
+                            {/* Indicateur de musique pour l'utilisateur qui a partagé la chanson */}
+                            {currentSongSharerId === roomUser.id && (
+                              <div className="absolute -bottom-2 -left-2 bg-violet-500 rounded-full p-1 z-20">
+                                <IconMusic className="h-4 w-4 text-white" />
+                              </div>
+                            )}
                           </div>
-                          <span className="text-white font-medium mt-2 text-center text-sm">{roomUser.username}</span>
+                          {/* Pseudonyme avec animation si l'utilisateur partage la musique */}
+                          {currentSongSharerId === roomUser.id ? (
+                            <div className="mt-2 text-center">
+                              <span className="bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-fuchsia-400 font-bold animate-pulse-slow">
+                                {roomUser.username}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-white font-medium mt-2 text-center text-sm">{roomUser.username}</span>
+                          )}
                         </div>
                       ))}
                     </div>
