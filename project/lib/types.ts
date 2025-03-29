@@ -54,4 +54,23 @@ export interface SongInfo {
   addedAt: number;
   startTime?: number;
   addedBy?: number;
+}
+
+// Type pour les liens dans les playlists
+export interface Link {
+  id: number;
+  url: string;
+  title?: string;
+  channel?: string;
+  playlistId: number;
+}
+
+export interface Playlist {
+  id: number;
+  name: string;
+  description: string;
+  coverImage?: string;
+  isPublic: boolean;
+  links: Link[];
+  userId?: number;
 } 

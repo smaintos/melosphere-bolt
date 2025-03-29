@@ -5,11 +5,12 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, Pencil, Download } from 'lucide-react';
+import { Plus, Trash2, Pencil, Download, Upload, Image as ImageIcon } from 'lucide-react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { EditPlaylistModal } from '@/components/EditPlaylistModal';
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import Image from 'next/image';
 
 import { createPlaylist, getPlaylists, deletePlaylist, updatePlaylist, downloadPlaylist } from '@/lib/api';
 
@@ -27,6 +28,10 @@ interface Playlist {
   description: string;
   links: Link[];
   isPublic: boolean;
+  coverImage?: string;
+  user?: {
+    username: string;
+  };
 }
 
 export default function PlaylistsPage() {
@@ -35,7 +40,8 @@ export default function PlaylistsPage() {
     name: '',
     description: '',
     links: [''],
-    isPublic: false
+    isPublic: false,
+    coverImage: null as File | null
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,6 +49,7 @@ export default function PlaylistsPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [downloadError, setDownloadError] = useState(false);
+  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPlaylists = async () => {
@@ -70,6 +77,19 @@ export default function PlaylistsPage() {
     });
   };
 
+  const handleCoverImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setNewPlaylist({ ...newPlaylist, coverImage: file });
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCoverImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleCreatePlaylist = async () => {
     setError(null);
     try {
@@ -84,11 +104,13 @@ export default function PlaylistsPage() {
         newPlaylist.name,
         newPlaylist.description,
         validLinks,
-        newPlaylist.isPublic
+        newPlaylist.isPublic,
+        newPlaylist.coverImage || undefined
       );
 
       setPlaylists(prevPlaylists => [...prevPlaylists, playlist]);
-      setNewPlaylist({ name: '', description: '', links: [''], isPublic: false });
+      setNewPlaylist({ name: '', description: '', links: [''], isPublic: false, coverImage: null });
+      setCoverImagePreview(null);
     } catch (err: any) {
       setError(err.message);
     }
@@ -139,7 +161,6 @@ export default function PlaylistsPage() {
       await downloadPlaylist(token, playlistId, (progress) => {
         setDownloadProgress(progress);
         if (progress === 100) {
-          // Garder le message "Téléchargement terminé" pendant 1 seconde avant de fermer
           setTimeout(() => {
             setIsDownloading(false);
           }, 1000);
@@ -149,7 +170,6 @@ export default function PlaylistsPage() {
       console.error('Erreur lors du téléchargement:', err);
       setError('Il y\'a un probleme avec votre fichier');
       setDownloadError(true);
-      // On garde l'état isDownloading à true pour afficher le message d'erreur
     }
   };
 
@@ -180,6 +200,47 @@ export default function PlaylistsPage() {
                   onChange={(e) => setNewPlaylist({ ...newPlaylist, description: e.target.value })}
                   className="bg-zinc-800/50"
                 />
+                <div className="space-y-2">
+                  <label className="text-sm text-zinc-400 block">Image de couverture (optionnelle):</label>
+                  <div className="flex items-center gap-4">
+                    <div className="w-24 h-24 rounded-md bg-zinc-800/70 flex items-center justify-center overflow-hidden">
+                      {coverImagePreview ? (
+                        <Image
+                          src={coverImagePreview}
+                          alt="Aperçu"
+                          width={96}
+                          height={96}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <ImageIcon className="w-8 h-8 text-zinc-600" />
+                      )}
+                    </div>
+                    <label className="flex items-center gap-2 px-3 py-2 rounded-md bg-zinc-800 hover:bg-zinc-700 transition-colors cursor-pointer">
+                      <Upload className="w-4 h-4 text-violet-400" />
+                      <span className="text-sm text-zinc-300">Télécharger</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleCoverImageChange}
+                        className="hidden"
+                      />
+                    </label>
+                    {coverImagePreview && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-zinc-400 hover:text-zinc-300"
+                        onClick={() => {
+                          setNewPlaylist({ ...newPlaylist, coverImage: null });
+                          setCoverImagePreview(null);
+                        }}
+                      >
+                        Supprimer
+                      </Button>
+                    )}
+                  </div>
+                </div>
                 <div className="flex items-center space-x-2">
                   <label className="text-sm text-zinc-400">Visibilité:</label>
                   <select
@@ -233,74 +294,72 @@ export default function PlaylistsPage() {
           {/* Container des playlists */}
           <div className="flex-1">
             <ScrollArea className="h-[calc(100vh-200px)] pr-4 rounded-lg bg-zinc-900/50 border border-violet-500/20">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 p-6">
                 {playlists.length === 0 ? (
                   <p className="text-zinc-400">Aucune playlist créée</p>
                 ) : (
                   playlists.map((playlist) => (
-                    <Card key={playlist.id} className="h-[300px] p-4 bg-zinc-800 rounded-lg relative border border-zinc-700/50 hover:border-violet-500/50 hover:shadow-[0_0_57px_rgba(139,92,246,0.2)] transition-all duration-300">
-                      <div className="flex flex-col h-full">
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between mb-4">
-                            <h3 className="text-lg font-semibold text-white">{playlist.name}</h3>
+                    <Card key={playlist.id} className="bg-zinc-900 border border-zinc-800 overflow-hidden transition-all duration-300 group hover:bg-zinc-800/90 hover:border-violet-500/30 hover:-translate-y-1 hover:shadow-lg hover:shadow-violet-900/20">
+                      {/* Couverture de la playlist - format carré */}
+                      <div className="w-full aspect-square overflow-hidden group-hover:opacity-90 transition-opacity">
+                        {playlist.coverImage ? (
+                          <Image
+                            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://87.106.162.205:5001'}/uploads/${playlist.coverImage}`}
+                            alt={playlist.name}
+                            width={300}
+                            height={300}
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
+                            <ImageIcon className="w-14 h-14 text-zinc-700" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="p-4">
+                        <h3 className="text-base font-semibold text-white line-clamp-1 mb-3">{playlist.name}</h3>
+                        
+                        <div className="flex flex-col gap-3">
+                          <div className="flex justify-between items-center">
                             <Badge 
                               variant={playlist.isPublic ? "default" : "secondary"}
-                              className={playlist.isPublic ? "bg-violet-600" : "bg-zinc-600"}
+                              className={`text-xs px-2 py-0.5 ${playlist.isPublic ? "bg-violet-600 hover:bg-violet-700" : "bg-zinc-700 hover:bg-zinc-600"}`}
                             >
                               {playlist.isPublic ? "Public" : "Privé"}
                             </Badge>
+                            
+                            <p className="text-xs text-zinc-500">
+                              {playlist.links.length} {playlist.links.length > 1 ? "titres" : "titre"}
+                            </p>
                           </div>
-                          <div className="h-[50px] mb-2 overflow-hidden">
-                            <p className="text-zinc-400 text-sm line-clamp-2">{playlist.description}</p>
+                          
+                          <div className="flex justify-end gap-1 mt-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingPlaylist(playlist)}
+                              className="h-8 w-8 p-0 bg-zinc-800/60 hover:bg-zinc-700"
+                            >
+                              <Pencil className="w-3.5 h-3.5 text-violet-400" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 bg-zinc-800/60 hover:bg-zinc-700"
+                              onClick={() => handleDownloadPlaylist(playlist.id)}
+                            >
+                              <Download className="w-3.5 h-3.5 text-violet-400" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 bg-zinc-800/60 hover:bg-zinc-700"
+                              onClick={() => handleDeletePlaylist(playlist.id)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                            </Button>
                           </div>
-                          <ScrollArea className="h-[120px]">
-                            <div className="space-y-2">
-                              {playlist.links.map((link, index) => (
-                                <p
-                                  key={index}
-                                  className="text-xs text-zinc-500 truncate hover:text-zinc-300 transition-colors"
-                                >
-                                  {link.title ? `${link.title} - ${link.channel}` : link.url}
-                                </p>
-                              ))}
-                            </div>
-                          </ScrollArea>
-                        </div>
-                        
-                        <div className="flex justify-center gap-2 pt-4 mt-auto border-t border-zinc-700/50">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setEditingPlaylist(playlist)}
-                            className="group relative"
-                          >
-                            <Pencil className="w-5 h-5" />
-                            <span className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                              Modifier
-                            </span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-green-500 hover:text-green-700 hover:bg-green-500/10 group relative"
-                            onClick={() => handleDownloadPlaylist(playlist.id)}
-                          >
-                            <Download className="w-5 h-5" />
-                            <span className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                              Télécharger
-                            </span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-red-500 hover:text-red-700 hover:bg-red-500/10 group relative"
-                            onClick={() => handleDeletePlaylist(playlist.id)}
-                          >
-                            <Trash2 className="w-5 h-5" />
-                            <span className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                              Supprimer
-                            </span>
-                          </Button>
                         </div>
                       </div>
                     </Card>

@@ -55,23 +55,49 @@ export const loginUser = async (email: string, password: string) => {
   return data;
 };
 
-export const createPlaylist = async (token: string, name: string, description: string, links: string[], isPublic: boolean) => {
-  const response = await fetch(`${API_URL}/api/playlists`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify({ name, description, links, isPublic }),
-  });
+export const createPlaylist = async (token: string, name: string, description: string, links: string[], isPublic: boolean, coverImage?: File) => {
+  // Si une image est fournie, nous devons utiliser FormData
+  if (coverImage) {
+    const formData = new FormData();
+    formData.append('name', name);
+    formData.append('description', description);
+    links.forEach((link, index) => {
+      formData.append(`links[${index}]`, link);
+    });
+    formData.append('isPublic', String(isPublic));
+    formData.append('coverImage', coverImage);
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Erreur lors de la création de la playlist');
+    const response = await fetch(`${API_URL}/api/playlists`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Erreur lors de la création de la playlist');
+    }
+    return data;
+  } else {
+    // Version originale sans image
+    const response = await fetch(`${API_URL}/api/playlists`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name, description, links, isPublic }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Erreur lors de la création de la playlist');
+    }
+    return data;
   }
-  return data;
 };
-
 
 export const getPlaylists = async (token: string) => {
   const response = await fetch(`${API_URL}/api/getplaylists`, {
@@ -87,6 +113,7 @@ export const getPlaylists = async (token: string) => {
   }
   return data;
 };
+
 export const deletePlaylist = async (token: string, playlistId: number) => {
   const response = await fetch(`${API_URL}/api/playlists/${playlistId}`, {
     method: 'DELETE',
@@ -129,29 +156,60 @@ export const updatePlaylist = async (token: string, playlistId: number, data: {
   name: string,
   description: string,
   links: string[],
-  isPublic: boolean
+  isPublic: boolean,
+  coverImage?: File
 }) => {
   console.log("Envoi de la requête updatePlaylist:", {
     playlistId,
     data
   });
 
-  const response = await fetch(`${API_URL}/api/updateplaylists/${playlistId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify(data),
-  });
+  // Si une image est fournie, nous devons utiliser FormData
+  if (data.coverImage) {
+    const formData = new FormData();
+    formData.append('name', data.name);
+    formData.append('description', data.description);
+    data.links.forEach((link, index) => {
+      formData.append(`links[${index}]`, link);
+    });
+    formData.append('isPublic', String(data.isPublic));
+    formData.append('coverImage', data.coverImage);
 
-  const responseData = await response.json();
-  console.log("Réponse updatePlaylist:", responseData);
+    const response = await fetch(`${API_URL}/api/updateplaylists/${playlistId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
 
-  if (!response.ok) {
-    throw new Error(responseData.message || 'Erreur lors de la modification de la playlist');
+    const responseData = await response.json();
+    console.log("Réponse updatePlaylist:", responseData);
+
+    if (!response.ok) {
+      throw new Error(responseData.message || 'Erreur lors de la modification de la playlist');
+    }
+    return responseData;
+  } else {
+    // Version originale sans image
+    const { coverImage, ...jsonData } = data; // On retire coverImage pour l'envoi JSON
+    const response = await fetch(`${API_URL}/api/updateplaylists/${playlistId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(jsonData),
+    });
+
+    const responseData = await response.json();
+    console.log("Réponse updatePlaylist:", responseData);
+
+    if (!response.ok) {
+      throw new Error(responseData.message || 'Erreur lors de la modification de la playlist');
+    }
+    return responseData;
   }
-  return responseData;
 };
 
 export const downloadPlaylist = async (token: string, playlistId: number, onProgress?: (progress: number) => void) => {

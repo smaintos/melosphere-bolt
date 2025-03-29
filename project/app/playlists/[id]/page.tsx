@@ -5,17 +5,19 @@ import { useParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, ArrowLeft, ExternalLink, Share2 } from "lucide-react";
+import { Download, ArrowLeft, ExternalLink, Share2, Image as ImageIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getPlaylists, downloadPlaylist } from "@/lib/api";
+import Image from 'next/image';
 
 interface Playlist {
   id: number;
   name: string;
   description: string;
   isPublic: boolean;
+  coverImage?: string;
   links: { url: string }[];
-  user: {
+  user?: {
     username: string;
   };
 }
@@ -136,38 +138,61 @@ export default function PlaylistDetailPage() {
 
         <div className="flex flex-col space-y-8">
           <Card className="p-8 bg-zinc-900/90 border-violet-500/20">
-            <div className="flex justify-between items-start">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-3xl font-bold text-white">{playlist.name}</h1>
-                  <Badge 
-                    variant={playlist.isPublic ? "default" : "secondary"}
-                    className={playlist.isPublic ? "bg-violet-600" : "bg-zinc-600"}
-                  >
-                    {playlist.isPublic ? "Public" : "Privé"}
-                  </Badge>
-                </div>
-                <p className="text-violet-400 text-sm">{playlist.user.username} est le king de la sphere !</p>
-                <p className="text-zinc-400 mt-4">{playlist.description}</p>
+            <div className="flex flex-col lg:flex-row gap-8">
+              <div className="w-56 h-56 aspect-square relative bg-zinc-800 rounded-lg overflow-hidden flex-shrink-0 border border-zinc-700/50 hover:border-violet-500/30 transition-all duration-300 group">
+                {playlist.coverImage ? (
+                  <Image
+                    src={`${process.env.NEXT_PUBLIC_API_URL || 'http://87.106.162.205:5001'}/uploads/${playlist.coverImage}`}
+                    alt={playlist.name}
+                    width={224}
+                    height={224}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    priority
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
+                    <ImageIcon className="w-20 h-20 text-zinc-700" />
+                  </div>
+                )}
               </div>
-              <div className="flex gap-2">
-                <Button 
-                  variant="ghost" 
-                  className="text-violet-500 hover:text-violet-400"
-                  onClick={handleDownload}
-                >
-                  <Download className="h-5 w-5" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  className="text-violet-500 hover:text-violet-400"
-                  onClick={() => {
-                    navigator.clipboard.writeText(window.location.href);
-                    // Ici vous pourriez ajouter une notification pour indiquer que le lien a été copié
-                  }}
-                >
-                  <Share2 className="h-5 w-5" />
-                </Button>
+              
+              <div className="flex-1">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <h1 className="text-3xl font-bold text-white">{playlist.name}</h1>
+                      <Badge 
+                        variant={playlist.isPublic ? "default" : "secondary"}
+                        className={playlist.isPublic ? "bg-violet-600" : "bg-zinc-600"}
+                      >
+                        {playlist.isPublic ? "Public" : "Privé"}
+                      </Badge>
+                    </div>
+                    <p className="text-violet-400 text-sm">
+                      {playlist.user ? `${playlist.user.username} est le king de la sphere !` : "Utilisateur inconnu est le king de la sphere !"}
+                    </p>
+                    <p className="text-zinc-400 mt-4">{playlist.description}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="ghost" 
+                      className="text-violet-500 hover:text-violet-400"
+                      onClick={handleDownload}
+                    >
+                      <Download className="h-5 w-5" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      className="text-violet-500 hover:text-violet-400"
+                      onClick={() => {
+                        navigator.clipboard.writeText(window.location.href);
+                        // Ici vous pourriez ajouter une notification pour indiquer que le lien a été copié
+                      }}
+                    >
+                      <Share2 className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           </Card>
